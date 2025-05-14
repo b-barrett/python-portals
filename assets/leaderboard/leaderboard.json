@@ -1,0 +1,102 @@
+[
+    {
+        "name": "Benjamin",
+        "score": 632,
+        "size": 70,
+        "date": "05/12/25",
+        "level": 16,
+        "bonus": 64,
+        "ts": 1747078314.467627,
+        "duration": "7:46"
+    },
+    {
+        "name": "juali",
+        "score": 466,
+        "size": 22,
+        "date": "05/11/25",
+        "level": 15,
+        "bonus": 314,
+        "ts": 1746977750.350551,
+        "duration": "6:32"
+    },
+    {
+        "name": "BB",
+        "score": 348,
+        "size": 50,
+        "date": "05/13/25",
+        "level": 11,
+        "bonus": 78,
+        "ts": 1747197667.541949,
+        "duration": "3:39"
+    },
+    {
+        "name": "BTB22",
+        "score": 310,
+        "size": 47,
+        "date": "05/13/25",
+        "level": 10,
+        "bonus": 60,
+        "ts": 1747196136.936971,
+        "duration": "4:10"
+    },
+    {
+        "name": "minchodos",
+        "score": 265,
+        "size": 44,
+        "date": "05/12/25",
+        "level": 10,
+        "bonus": 30,
+        "ts": 1747085044.988223,
+        "duration": "5:32"
+    },
+    {
+        "name": "Jammin",
+        "score": 249,
+        "size": 41,
+        "date": "05/12/25",
+        "level": 10,
+        "bonus": 36,
+        "ts": 1747077324.414953,
+        "duration": "8:51"
+    },
+    {
+        "name": "Ben",
+        "score": 193,
+        "size": 38,
+        "date": "05/12/25",
+        "level": 9,
+        "bonus": 11,
+        "ts": 1747079153.310093,
+        "duration": "5:56"
+    },
+    {
+        "name": "Benny B",
+        "score": 164,
+        "size": 35,
+        "date": "05/12/25",
+        "level": 8,
+        "bonus": 23,
+        "ts": 1747077481.770732,
+        "duration": "2:26"
+    },
+    {
+        "name": "Ben B",
+        "score": 138,
+        "size": 26,
+        "date": "05/12/25",
+        "level": 6,
+        "bonus": 49,
+        "ts": 1747075266.924399,
+        "duration": "2:28"
+    },
+    {
+        "name": "Benjamin",
+        "score": 1,
+        "size": 2,
+        "date": "05/14/25",
+        "level": 1,
+        "bonus": 0,
+        "ts": 1747263287.480446,
+        "duration": "0:03"
+    }
+]
