@@ -59,14 +59,25 @@ RESTORE_VOLUME_AFTER_FOOD_SOUND = pygame.USEREVENT + 1
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
-my_font = "assets/fonts/VT323-Regular.ttf"
+MY_FONT = "assets/fonts/VT323-Regular.ttf"
 GAME_NAME = "Python Portals"
 
-class Font:
-    pass
+class FontManager:
+    def __init__(self, screen_size):
+        base_path = "assets/fonts/VT323-Regular.ttf"
+        self.title = pygame.font.Font(base_path, screen_size // 12)
+        self.body = pygame.font.Font(base_path, screen_size // 14)
+        self.instructions = pygame.font.Font(base_path, screen_size // 18)
+        self.small = pygame.font.Font(base_path, screen_size // 22)
+
+        # keyword(s) for cleanup: font, screen_size
+
+# FONTS = FontManager(SCREEN_SIZE)
+# screen.blit(FONTS.instructions.render("Press P to pause", True, WHITE), pos)
+
 
 class MarginsAndSpacing:
-    pass # addtl keyword search: _y
+    pass # addtl keyword search: _y 
 
 # Leaderboard
 LEADERBOARD_FILE = "assets/leaderboard/leaderboard.json"
@@ -421,9 +432,9 @@ def prompt_player_name_skin_music_voice_speed():
     skin_y  = speed_y + SPACING
     preview_y = skin_y + SPACING
 
-    PROMPT_TITLE = pygame.font.Font(my_font, SCREEN_SIZE // 12)
-    PROMPT_BODY = pygame.font.Font(my_font, SCREEN_SIZE // 14)
-    PROMPT_INSTRUCTIONS = pygame.font.Font(my_font, SCREEN_SIZE // 18)
+    PROMPT_BODY = pygame.font.Font(MY_FONT, SCREEN_SIZE // 14)
+    PROMPT_INSTRUCTIONS = pygame.font.Font(MY_FONT, SCREEN_SIZE // 18)
+
     error_sound = pygame.mixer.Sound("assets/sounds/crunchybite.ogg")
     
     name = ""
@@ -456,7 +467,7 @@ def prompt_player_name_skin_music_voice_speed():
         if voice_selected:
             voice_text = f"Voice: {voice_pack_names[selected_voice_index].capitalize()}"
         else:
-            voice_text = "No Voice: chomp only (default)"
+            voice_text = "Voice: None (chomp only)"
      
         voice_label = PROMPT_BODY.render(voice_text, True, BLACK)
         voice_rect = voice_label.get_rect(center=(SCREEN_SIZE // 2, voice_y))
@@ -472,30 +483,73 @@ def prompt_player_name_skin_music_voice_speed():
         speed_rect = speed_label.get_rect(center=(SCREEN_SIZE // 2, skin_y))
         screen.blit(speed_label, speed_rect)
 
-        # Skin Preview 
-        skin_size = CELL_SIZE * 6
-        skin_preview = load_image(skin_files[skin_index], 
-                                  size=(skin_size, skin_size), 
-                                  use_alpha=True)
+        # # Skin Preview 
+        # skin_size = CELL_SIZE * 6
+        # skin_preview = load_image(skin_files[skin_index], 
+        #                           size=(skin_size, skin_size), 
+        #                           use_alpha=True)
         
-        x = SCREEN_SIZE // 2 - (skin_size // 2)
-        y = skin_rect.bottom + SPACING*2
-        screen.blit(skin_preview, (x, preview_y))
+        # x = SCREEN_SIZE // 2 - (skin_size // 2)
+        # y = skin_rect.bottom + SPACING*2
+        # screen.blit(skin_preview, (x, preview_y))
+
+        # # Font used above for "Snakeskin:"
+        # font = PROMPT_BODY
+
+        # skin_label_surf = font.render(f"Snakeskin: {skin_names[skin_index]}", True, BLACK)
+        # skin_rect = skin_label_surf.get_rect(center=(SCREEN_SIZE // 2, skin_y))
+        # screen.blit(skin_label_surf, skin_rect)
+
+        # # Preview Position (fixed padding below label)
+        # preview_spacing = SCREEN_SIZE // 40  # fixed spacing not tied to CELL_SIZE
+        # skin_size = SCREEN_SIZE // 10        # fixed size for preview box
+        # skin_preview = load_image(skin_files[skin_index], size=(skin_size, skin_size), use_alpha=True)
+
+        # x = (SCREEN_SIZE - skin_size) // 2
+        # y = skin_rect.bottom + preview_spacing
+        # screen.blit(skin_preview, (x, y))
+
+
+        # Constants (top of file or nearby)
+        SKIN_PREVIEW_SIZE = SCREEN_SIZE // 4  # Larger preview
+        PREVIEW_SPACING_BELOW_LABEL = SCREEN_SIZE // 40
+
+        # In draw logic, after skin label
+        skin_label_surf = PROMPT_BODY.render(f"Snakeskin: {skin_names[skin_index]}", True, BLACK)
+        skin_rect = skin_label_surf.get_rect(center=(SCREEN_SIZE // 2, skin_y))
+        screen.blit(skin_label_surf, skin_rect)
+
+        # Load and draw preview box
+        skin_preview = load_image(skin_files[skin_index], 
+                                size=(SKIN_PREVIEW_SIZE, SKIN_PREVIEW_SIZE), 
+                                use_alpha=True)
+
+        x = (SCREEN_SIZE - SKIN_PREVIEW_SIZE) // 2
+
+
+        # y = skin_rect.bottom + PREVIEW_SPACING_BELOW_LABEL
+        # screen.blit(skin_preview, (x, y))
 
         # Voice instructions
-        tab_surf = PROMPT_INSTRUCTIONS.render("Preview Voice with Tab/Shift+Tab", True, BLACK)
+        tab_surf = PROMPT_INSTRUCTIONS.render("Select Voice with Tab/Shift+Tab", True, BLACK)
         tab_rect = tab_surf.get_rect(
             center=(SCREEN_SIZE // 2, SCREEN_SIZE + HUD_HEIGHT - INSTRUCTION_MARGIN_BOTTOM_2*5))
         screen.blit(tab_surf, tab_rect)
+
+        # Position box exactly between Snakeskin label and Voice Instructions
+        center_y = (skin_rect.bottom + tab_rect.top) // 2
+        preview_x = (SCREEN_SIZE - SKIN_PREVIEW_SIZE) // 2
+        screen.blit(skin_preview, (preview_x, center_y - SKIN_PREVIEW_SIZE // 2))
+
         
         # Music instructions
-        ud_arrow_surf = PROMPT_INSTRUCTIONS.render("Preview Music with Up/Down Arrows", True, BLACK)
+        ud_arrow_surf = PROMPT_INSTRUCTIONS.render("Select Music with Up/Down Arrows", True, BLACK)
         ud_arrow_rect = ud_arrow_surf.get_rect(
             center=(SCREEN_SIZE // 2, SCREEN_SIZE + HUD_HEIGHT - INSTRUCTION_MARGIN_BOTTOM_2*4))
         screen.blit(ud_arrow_surf, ud_arrow_rect)
         
         # Skin instructions
-        lr_arrow_surf = PROMPT_INSTRUCTIONS.render("Preview Skin with Left/Right Arrows", True, BLACK)
+        lr_arrow_surf = PROMPT_INSTRUCTIONS.render("Select Skin with Left/Right Arrows", True, BLACK)
         lr_arrow_rect = lr_arrow_surf.get_rect(
             center=(SCREEN_SIZE // 2, SCREEN_SIZE + HUD_HEIGHT - INSTRUCTION_MARGIN_BOTTOM_2*3))
         screen.blit(lr_arrow_surf, lr_arrow_rect)
@@ -588,9 +642,9 @@ def prompt_player_name_skin_music_voice_speed():
                 selected_speed = "Fast" if selected_speed == "Slow" else "Slow"
 
 def show_instructions_screen(game):
-    font_title = pygame.font.Font(my_font, SCREEN_SIZE // 12)
-    font_body = pygame.font.Font(my_font, SCREEN_SIZE // 20)
-    font_prompt = pygame.font.Font(my_font, SCREEN_SIZE // 20)
+    font_title = pygame.font.Font(MY_FONT, SCREEN_SIZE // 12)
+    font_body = pygame.font.Font(MY_FONT, SCREEN_SIZE // 20)
+    font_prompt = pygame.font.Font(MY_FONT, SCREEN_SIZE // 20)
 
     title_y = SCREEN_SIZE // 14
     instructions_y = SCREEN_SIZE // 6
@@ -606,8 +660,8 @@ def show_instructions_screen(game):
         "Use cursor to click blue square bonuses.",
         "Game ends when snake hits wall.",
         "Game ends when snake eats tail.",
-        f"Reach level {game.final_level} to achieve immortality.",
         "Press P to pause and catch your breath.",
+        f"Reach level {game.final_level} to achieve immortality.",
         "See you on the leaderboard!"
     ]
 
@@ -806,8 +860,8 @@ class Game:
         self.bonus_points_total = 0
 
         # UI Fonts
-        self.font_large = pygame.font.Font(my_font, 64)
-        self.font_medium = pygame.font.Font(my_font, 32)
+        self.font_large = pygame.font.Font(MY_FONT, 64)
+        self.font_medium = pygame.font.Font(MY_FONT, 32)
 
         # Game Duration
         self.start_time = None
@@ -1224,10 +1278,10 @@ class Game:
         ENTRY_LINE_SPACING = SCREEN_SIZE // 15
 
         # Fonts
-        title_font = pygame.font.Font(my_font, SCREEN_SIZE // 14)
-        header_font = pygame.font.Font(my_font, SCREEN_SIZE // 18)
-        entry_font = pygame.font.Font(my_font, SCREEN_SIZE // 20)  
-        instruction_font = pygame.font.Font(my_font, SCREEN_SIZE // 20)
+        title_font = pygame.font.Font(MY_FONT, SCREEN_SIZE // 14)
+        header_font = pygame.font.Font(MY_FONT, SCREEN_SIZE // 18)
+        entry_font = pygame.font.Font(MY_FONT, SCREEN_SIZE // 20)  
+        instruction_font = pygame.font.Font(MY_FONT, SCREEN_SIZE // 20)
 
         # Draw Title
         title_text = title_font.render("Python Portals Leaderboard", True, BLACK)
@@ -1407,7 +1461,7 @@ class Game:
             return
 
         victory_y = SCREEN_SIZE // 4
-        font_body = pygame.font.Font(my_font, SCREEN_SIZE // 16)
+        font_body = pygame.font.Font(MY_FONT, SCREEN_SIZE // 16)
 
         # Determine final top speed after one more level
         final_speed_ms = self.snake_speed_ms - self.speed_delta
