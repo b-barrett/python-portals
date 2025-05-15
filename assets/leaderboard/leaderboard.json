@@ -90,13 +90,13 @@
         "duration": "2:28"
     },
     {
-        "name": "Benjamin",
-        "score": 1,
-        "size": 2,
-        "date": "05/14/25",
-        "level": 1,
-        "bonus": 0,
-        "ts": 1747263287.480446,
-        "duration": "0:03"
+        "name": "Julia",
+        "score": 114,
+        "size": 13,
+        "date": "05/15/25",
+        "level": 2,
+        "bonus": 8,
+        "ts": 1747341518.324306,
+        "duration": "1:11"
     }
 ]
