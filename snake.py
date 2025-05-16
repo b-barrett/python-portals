@@ -9,6 +9,7 @@ import os
 import random
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 
@@ -304,6 +305,30 @@ food_images = [
 # region LEADERBOARD LOGIC
 # === LEADERBOARD LOGIC ===
 
+def git_pull_leaderboard():
+    if os.path.isdir(".git"):
+        try:
+            subprocess.run(["git", "pull", "origin", "main"], check=True)
+            print("✅ Pulled latest leaderboard.json from GitHub")
+        except subprocess.CalledProcessError as e:
+            print(f"❌ Git pull failed: {e}")
+    else:
+        print("ℹ️ Git pull skipped (not in a Git repo)")
+
+def git_push_leaderboard():
+    if os.path.isdir(".git"):
+        try:
+            subprocess.run(["git", "add", "assets/leaderboard/leaderboard.json"], check=True)
+            subprocess.run(["git", "commit", "-m", "Update leaderboard"], check=True)
+            subprocess.run(["git", "push", "origin", "main"], check=True)
+            print("✅ Pushed updated leaderboard.json to GitHub")
+        except subprocess.CalledProcessError as e:
+            print(f"❌ Git push failed: {e}")
+    else:
+        print("ℹ️ Git push skipped (not in a Git repo)")
+
+
+
 def load_leaderboard():
     """
     Load and return the leaderboard data from a JSON file.
@@ -375,6 +400,7 @@ def update_leaderboard(player_name, score, snake_length, level, bonus_points, du
         >>> print(timestamp)
         1634567890.123
     """
+    git_pull_leaderboard()
     leaderboard = load_leaderboard()
     today = datetime.datetime.now().strftime("%m/%d/%y")
     timestamp = datetime.datetime.now().timestamp()
@@ -401,6 +427,7 @@ def update_leaderboard(player_name, score, snake_length, level, bonus_points, du
 
     leaderboard = leaderboard[:MAX_LEADERBOARD_ENTRIES]
     save_leaderboard(leaderboard)
+    git_push_leaderboard()
 
     return timestamp if any(entry.get("ts") == timestamp for entry in leaderboard) else None
 
@@ -1298,6 +1325,7 @@ class Game:
             screen.blit(header_surf, header_rect)
 
         # Draw Leaderboard Entries
+        git_pull_leaderboard()
         leaderboard = load_leaderboard()
 
         # Find starting y so entries are centered between HEADER_MARGIN_TOP and screen bottom

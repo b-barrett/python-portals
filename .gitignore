@@ -2,5 +2,5 @@
 __pycache__/       # Python's temp bytecode cache folders
 *.pyc              # Compiled Python files (not source)
 *.pyo              # Optimized .pyc (rare, but auto-generated)
-*.save             # In case you write save files (game state)
+*.save             # Ignore future save files (if you add game state persistence)
 .DS_Store          # macOS file metadata (clutters up repos)
