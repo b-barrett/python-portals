@@ -618,7 +618,7 @@ def prompt_player_name_skin_music_voice_speed():
 
                 elif event.unicode.isprintable():
                     # Allow up to 8 characters total — we check length *before* adding next character
-                    if len(name) < 8:
+                    if len(name) < 7:
                         name += event.unicode
                     else:
                         error_sound.play()
@@ -1315,7 +1315,7 @@ class Game:
         screen.blit(trophy_img, (right_trophy_x, y - trophy_img.get_height() // 2))
 
         # Draw Headers
-        headers = ["Rank", "Name", "Score", "Size", "Level", "Bonus", "Time", "Date"]
+        headers = ["Rank", "Name", "Score", "Size", "Lvl", "Bns", "Dur", "Date"]
         spacing = SCREEN_SIZE // len(headers)
 
         for i, header in enumerate(headers):
