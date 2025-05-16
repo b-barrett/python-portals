@@ -90,6 +90,9 @@ LAYOUTS = Layout(SCREEN_SIZE)
 LEADERBOARD_FILE = "assets/leaderboard/leaderboard.json"
 MAX_LEADERBOARD_ENTRIES = 10
 
+# Pull latest leaderboard only once at start of session
+git_pull_leaderboard()
+
 # Game Timing
 START_SPEED_SLOW = 240 # Initial speed in milliseconds
 START_SPEED_FAST = 135 # Initial speed in milliseconds
@@ -313,19 +316,19 @@ def git_pull_leaderboard():
         except subprocess.CalledProcessError as e:
             print(f"❌ Git pull failed: {e}")
     else:
-        print("ℹ️ Git pull skipped (not in a Git repo)")
+        print("Git pull skipped (not a Git repo)")
 
 def git_push_leaderboard():
     if os.path.isdir(".git"):
         try:
             subprocess.run(["git", "add", "assets/leaderboard/leaderboard.json"], check=True)
-            subprocess.run(["git", "commit", "-m", "Update leaderboard"], check=True)
+            subprocess.run(["git", "commit", "-m", "Autoupdate leaderboard"], check=True)
             subprocess.run(["git", "push", "origin", "main"], check=True)
             print("✅ Pushed updated leaderboard.json to GitHub")
         except subprocess.CalledProcessError as e:
             print(f"❌ Git push failed: {e}")
     else:
-        print("ℹ️ Git push skipped (not in a Git repo)")
+        print("Git push skipped (not a Git repo)")
 
 
 
@@ -400,7 +403,6 @@ def update_leaderboard(player_name, score, snake_length, level, bonus_points, du
         >>> print(timestamp)
         1634567890.123
     """
-    git_pull_leaderboard()
     leaderboard = load_leaderboard()
     today = datetime.datetime.now().strftime("%m/%d/%y")
     timestamp = datetime.datetime.now().timestamp()
@@ -427,7 +429,6 @@ def update_leaderboard(player_name, score, snake_length, level, bonus_points, du
 
     leaderboard = leaderboard[:MAX_LEADERBOARD_ENTRIES]
     save_leaderboard(leaderboard)
-    git_push_leaderboard()
 
     return timestamp if any(entry.get("ts") == timestamp for entry in leaderboard) else None
 
@@ -1101,6 +1102,8 @@ class Game:
                 self.player_name, self.score, len(self.snake.body),
                 self.level, self.bonus_points_total, self.game_duration())
             self.highlight_entry_ts = entry_timestamp
+            if entry_timestamp:
+                git_push_leaderboard()
         
         pygame.mixer.music.fadeout(500)  # ⬅️ Stop music immediately
         print("Game Over - resetting everything")
@@ -1325,7 +1328,6 @@ class Game:
             screen.blit(header_surf, header_rect)
 
         # Draw Leaderboard Entries
-        git_pull_leaderboard()
         leaderboard = load_leaderboard()
 
         # Find starting y so entries are centered between HEADER_MARGIN_TOP and screen bottom
