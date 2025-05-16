@@ -1,5 +1,15 @@
 [
     {
+        "name": "Bennie B",
+        "score": 745,
+        "size": 74,
+        "date": "05/16/25",
+        "level": 16,
+        "bonus": 122,
+        "ts": 1747420554.53284,
+        "duration": "5:32"
+    },
+    {
         "name": "juali",
         "score": 466,
         "size": 22,
@@ -88,15 +98,5 @@
         "bonus": 49,
         "ts": 1747075266.924399,
         "duration": "2:28"
-    },
-    {
-        "name": "asdf",
-        "score": 106,
-        "size": 11,
-        "date": "05/15/25",
-        "level": 2,
-        "bonus": 4,
-        "ts": 1747369823.510859,
-        "duration": "1:12"
     }
 ]
