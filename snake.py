@@ -59,25 +59,31 @@ RESTORE_VOLUME_AFTER_FOOD_SOUND = pygame.USEREVENT + 1
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
-MY_FONT = "assets/fonts/VT323-Regular.ttf"
 GAME_NAME = "Python Portals"
 
-class FontManager:
+MY_FONT = "assets/fonts/VT323-Regular.ttf"
+
+class Font:
     def __init__(self, screen_size):
-        base_path = "assets/fonts/VT323-Regular.ttf"
-        self.title = pygame.font.Font(base_path, screen_size // 12)
-        self.body = pygame.font.Font(base_path, screen_size // 14)
-        self.instructions = pygame.font.Font(base_path, screen_size // 18)
-        self.small = pygame.font.Font(base_path, screen_size // 22)
+        path = "assets/fonts/VT323-Regular.ttf"
+        self.title_large = pygame.font.Font(path, screen_size // 12)
+        self.title_medium = pygame.font.Font(path, screen_size // 14)
+        self.body_large = pygame.font.Font(path, screen_size // 16)
+        self.body_medium = pygame.font.Font(path, screen_size // 18)
+        self.body_small = pygame.font.Font(path, screen_size // 20)
+        self.label = pygame.font.Font(path, screen_size // 24)
 
-        # keyword(s) for cleanup: font, screen_size
+FONTS = Font(SCREEN_SIZE)
 
-# FONTS = FontManager(SCREEN_SIZE)
-# screen.blit(FONTS.instructions.render("Press P to pause", True, WHITE), pos)
+class Layout:
+        def __init__(self, screen_size):
+            self.center_x = screen_size // 2 # refactor "SCREEN_SIZE // 2" to LAYOUTS.center_x
+            self.welcome_margin_bottom = screen_size // 15
 
+# keyword(s) for layout consolidation if using class Layout: 
+# spacing, margin, layout, screen_size, _y, _x, cell_size
 
-class MarginsAndSpacing:
-    pass # addtl keyword search: _y 
+LAYOUTS = Layout(SCREEN_SIZE)
 
 # Leaderboard
 LEADERBOARD_FILE = "assets/leaderboard/leaderboard.json"
@@ -90,8 +96,8 @@ START_SPEED_FAST = 135 # Initial speed in milliseconds
 SPEED_DELTA_SLOW = 10
 SPEED_DELTA_FAST = 5
 
-FINAL_LEVEL_SLOW = 2
-FINAL_LEVEL_FAST = 3
+FINAL_LEVEL_SLOW = 22
+FINAL_LEVEL_FAST = 21
 
 MOUSE_BONUS_UNLOCK_SLOW = 240  # Snake must be moving at or faster than this to allow mouse bonuses
 MOUSE_BONUS_UNLOCK_FAST = 135
@@ -420,8 +426,6 @@ def initialize_game_session():
     return game, snake_skin, skin_names[skin_index]
 
 def prompt_player_name_skin_music_voice_speed():
-    INSTRUCTION_MARGIN_BOTTOM_2 = SCREEN_SIZE // 15
-    
     center_y = SCREEN_SIZE // 16  # Base anchor point
     SPACING = CELL_SIZE*2
 
@@ -430,10 +434,9 @@ def prompt_player_name_skin_music_voice_speed():
     voice_y = name_y + SPACING
     speed_y = voice_y + SPACING
     skin_y  = speed_y + SPACING
-    preview_y = skin_y + SPACING
 
-    PROMPT_BODY = pygame.font.Font(MY_FONT, SCREEN_SIZE // 14)
-    PROMPT_INSTRUCTIONS = pygame.font.Font(MY_FONT, SCREEN_SIZE // 18)
+    # Constants (top of file or nearby)
+    SKIN_PREVIEW_SIZE = SCREEN_SIZE // 4
 
     error_sound = pygame.mixer.Sound("assets/sounds/crunchybite.ogg")
     
@@ -449,17 +452,17 @@ def prompt_player_name_skin_music_voice_speed():
     while True:
         screen.fill(WHITE)
 
-        # Welcome prompt
-        speed_text = "WELCOME TO PYTHON PORTALS"
-        speed_surf = PROMPT_BODY.render(speed_text, True, BLACK)
-        speed_rect = speed_surf.get_rect(center=(SCREEN_SIZE // 2, welcome_y))
-        screen.blit(speed_surf, speed_rect)
+        # Welcome Text
+        welcom_text = "WELCOME TO PYTHON PORTALS"
+        welcome_surf = FONTS.title_medium.render(welcom_text, True, BLACK)
+        welcome_rect = welcome_surf.get_rect(center=(SCREEN_SIZE // 2, welcome_y))
+        screen.blit(welcome_surf, welcome_rect)
 
         # Name Prompt
-        prompt_text = "Name: " + name
+        name_label = "Name: " + name
         if cursor_visible:
-            prompt_text += "_"
-        name_surf = PROMPT_BODY.render(prompt_text, True, BLACK)
+            name_label += "_"
+        name_surf = FONTS.title_medium.render(name_label, True, BLACK)
         name_rect = name_surf.get_rect(center=(SCREEN_SIZE // 2, name_y))
         screen.blit(name_surf, name_rect)
         
@@ -469,100 +472,58 @@ def prompt_player_name_skin_music_voice_speed():
         else:
             voice_text = "Voice: None (chomp only)"
      
-        voice_label = PROMPT_BODY.render(voice_text, True, BLACK)
+        voice_label = FONTS.title_medium.render(voice_text, True, BLACK)
         voice_rect = voice_label.get_rect(center=(SCREEN_SIZE // 2, voice_y))
         screen.blit(voice_label, voice_rect)
         
         # Speed Label
-        skin_label = PROMPT_BODY.render(f"Snake Speed: {selected_speed}", True, BLACK)
-        skin_rect = skin_label.get_rect(center=(SCREEN_SIZE // 2, speed_y))
-        screen.blit(skin_label, skin_rect)
+        speed_label_surf = FONTS.title_medium.render(f"Speed: {selected_speed}", True, BLACK)
+        speed_label_rect = speed_label_surf.get_rect(center=(SCREEN_SIZE // 2, speed_y))
+        screen.blit(speed_label_surf, speed_label_rect)
         
         # Skin Label
-        speed_label = PROMPT_BODY.render(f"Snakeskin: {skin_names[skin_index]}", True, BLACK)
-        speed_rect = speed_label.get_rect(center=(SCREEN_SIZE // 2, skin_y))
-        screen.blit(speed_label, speed_rect)
+        skin_label_surf = FONTS.title_medium.render(f"Snakeskin: {skin_names[skin_index]}", True, BLACK)
+        skin_label_rect = skin_label_surf.get_rect(center=(SCREEN_SIZE // 2, skin_y))
+        screen.blit(skin_label_surf, skin_label_rect)
 
-        # # Skin Preview 
-        # skin_size = CELL_SIZE * 6
-        # skin_preview = load_image(skin_files[skin_index], 
-        #                           size=(skin_size, skin_size), 
-        #                           use_alpha=True)
+        # Voice Instructions
+        tab_surf = FONTS.body_medium.render("Select Voice with Tab/Shift+Tab", True, BLACK)
+        tab_rect = tab_surf.get_rect(
+            center=(SCREEN_SIZE // 2, SCREEN_SIZE + HUD_HEIGHT - LAYOUTS.welcome_margin_bottom*5))
+        screen.blit(tab_surf, tab_rect)
         
-        # x = SCREEN_SIZE // 2 - (skin_size // 2)
-        # y = skin_rect.bottom + SPACING*2
-        # screen.blit(skin_preview, (x, preview_y))
-
-        # # Font used above for "Snakeskin:"
-        # font = PROMPT_BODY
-
-        # skin_label_surf = font.render(f"Snakeskin: {skin_names[skin_index]}", True, BLACK)
-        # skin_rect = skin_label_surf.get_rect(center=(SCREEN_SIZE // 2, skin_y))
-        # screen.blit(skin_label_surf, skin_rect)
-
-        # # Preview Position (fixed padding below label)
-        # preview_spacing = SCREEN_SIZE // 40  # fixed spacing not tied to CELL_SIZE
-        # skin_size = SCREEN_SIZE // 10        # fixed size for preview box
-        # skin_preview = load_image(skin_files[skin_index], size=(skin_size, skin_size), use_alpha=True)
-
-        # x = (SCREEN_SIZE - skin_size) // 2
-        # y = skin_rect.bottom + preview_spacing
-        # screen.blit(skin_preview, (x, y))
-
-
-        # Constants (top of file or nearby)
-        SKIN_PREVIEW_SIZE = SCREEN_SIZE // 4  # Larger preview
-        PREVIEW_SPACING_BELOW_LABEL = SCREEN_SIZE // 40
-
-        # In draw logic, after skin label
-        skin_label_surf = PROMPT_BODY.render(f"Snakeskin: {skin_names[skin_index]}", True, BLACK)
-        skin_rect = skin_label_surf.get_rect(center=(SCREEN_SIZE // 2, skin_y))
-        screen.blit(skin_label_surf, skin_rect)
-
         # Load and draw preview box
         skin_preview = load_image(skin_files[skin_index], 
                                 size=(SKIN_PREVIEW_SIZE, SKIN_PREVIEW_SIZE), 
                                 use_alpha=True)
-
-        x = (SCREEN_SIZE - SKIN_PREVIEW_SIZE) // 2
-
-
-        # y = skin_rect.bottom + PREVIEW_SPACING_BELOW_LABEL
-        # screen.blit(skin_preview, (x, y))
-
-        # Voice instructions
-        tab_surf = PROMPT_INSTRUCTIONS.render("Select Voice with Tab/Shift+Tab", True, BLACK)
-        tab_rect = tab_surf.get_rect(
-            center=(SCREEN_SIZE // 2, SCREEN_SIZE + HUD_HEIGHT - INSTRUCTION_MARGIN_BOTTOM_2*5))
-        screen.blit(tab_surf, tab_rect)
-
-        # Position box exactly between Snakeskin label and Voice Instructions
-        center_y = (skin_rect.bottom + tab_rect.top) // 2
-        preview_x = (SCREEN_SIZE - SKIN_PREVIEW_SIZE) // 2
-        screen.blit(skin_preview, (preview_x, center_y - SKIN_PREVIEW_SIZE // 2))
-
         
-        # Music instructions
-        ud_arrow_surf = PROMPT_INSTRUCTIONS.render("Select Music with Up/Down Arrows", True, BLACK)
+        # Vertically center preview box between Skin Label above and Voice Instructions below
+        skin_preview_x = (SCREEN_SIZE - SKIN_PREVIEW_SIZE) // 2
+        skin_preview_y = (skin_label_rect.bottom + tab_rect.top) // 2
+        screen.blit(skin_preview, (skin_preview_x, skin_preview_y - SKIN_PREVIEW_SIZE // 2))
+
+        # Music Instructions
+        ud_arrow_surf = FONTS.body_medium.render("Select Music with Up/Down Arrows", True, BLACK)
         ud_arrow_rect = ud_arrow_surf.get_rect(
-            center=(SCREEN_SIZE // 2, SCREEN_SIZE + HUD_HEIGHT - INSTRUCTION_MARGIN_BOTTOM_2*4))
+            center=(SCREEN_SIZE // 2, SCREEN_SIZE + HUD_HEIGHT - LAYOUTS.welcome_margin_bottom*4))
         screen.blit(ud_arrow_surf, ud_arrow_rect)
         
-        # Skin instructions
-        lr_arrow_surf = PROMPT_INSTRUCTIONS.render("Select Skin with Left/Right Arrows", True, BLACK)
+        # Skin Instructions
+        lr_arrow_surf = FONTS.body_medium.render("Select Skin with Left/Right Arrows", True, BLACK)
         lr_arrow_rect = lr_arrow_surf.get_rect(
-            center=(SCREEN_SIZE // 2, SCREEN_SIZE + HUD_HEIGHT - INSTRUCTION_MARGIN_BOTTOM_2*3))
+            center=(SCREEN_SIZE // 2, SCREEN_SIZE + HUD_HEIGHT - LAYOUTS.welcome_margin_bottom*3))
         screen.blit(lr_arrow_surf, lr_arrow_rect)
 
-        # Speed mode
-        speed_text = "Click Anywhere on Screen to Change Speed"
-        speed_surf = PROMPT_INSTRUCTIONS.render(speed_text, True, BLACK)
-        speed_rect = speed_surf.get_rect(center=(SCREEN_SIZE // 2, SCREEN_SIZE + HUD_HEIGHT - INSTRUCTION_MARGIN_BOTTOM_2*2))
-        screen.blit(speed_surf, speed_rect)
+        # Speed Instructions
+        mouse_text = "Click Anywhere on Screen to Change Speed"
+        mouse_surf = FONTS.body_medium.render(mouse_text, True, BLACK)
+        mouse_rect = mouse_surf.get_rect(center=(SCREEN_SIZE // 2, SCREEN_SIZE + HUD_HEIGHT - LAYOUTS.welcome_margin_bottom*2))
+        screen.blit(mouse_surf, mouse_rect)
         
-        confirm_surf = PROMPT_INSTRUCTIONS.render("Press ENTER to Confirm All", True, BLACK)
+        # Confirm All Instructions
+        confirm_surf = FONTS.body_medium.render("Press ENTER to Confirm All", True, BLACK)
         confirm_rect = confirm_surf.get_rect(
-            center=(SCREEN_SIZE // 2, SCREEN_SIZE + HUD_HEIGHT - INSTRUCTION_MARGIN_BOTTOM_2))
+            center=(SCREEN_SIZE // 2, SCREEN_SIZE + HUD_HEIGHT - LAYOUTS.welcome_margin_bottom))
         screen.blit(confirm_surf, confirm_rect)
         
         pygame.display.update()
@@ -619,7 +580,6 @@ def prompt_player_name_skin_music_voice_speed():
                         else:
                             selected_voice_index = (selected_voice_index + 1) % len(voice_pack_paths)
 
-                    # === Mandatory voice preview: play first .wav in folder ===
                     preview_folder = voice_pack_paths[selected_voice_index]
                     wav_files = sorted(glob.glob(os.path.join(preview_folder, "*.wav")))
 
@@ -642,10 +602,6 @@ def prompt_player_name_skin_music_voice_speed():
                 selected_speed = "Fast" if selected_speed == "Slow" else "Slow"
 
 def show_instructions_screen(game):
-    font_title = pygame.font.Font(MY_FONT, SCREEN_SIZE // 12)
-    font_body = pygame.font.Font(MY_FONT, SCREEN_SIZE // 20)
-    font_prompt = pygame.font.Font(MY_FONT, SCREEN_SIZE // 20)
-
     title_y = SCREEN_SIZE // 14
     instructions_y = SCREEN_SIZE // 6
     prompt_y = SCREEN_SIZE + HUD_HEIGHT - (SCREEN_SIZE // 14)
@@ -669,16 +625,16 @@ def show_instructions_screen(game):
         screen.fill(WHITE)
 
         # Title
-        title = font_title.render("How to Play Python Portals", True, BLACK)
+        title = FONTS.title_large.render("How to Play Python Portals", True, BLACK)
         screen.blit(title, title.get_rect(center=(SCREEN_SIZE // 2, title_y)))
 
         # How-to Lines
         for i, line in enumerate(howto_lines):
-            rendered = font_body.render(line, True, BLACK)
+            rendered = FONTS.body_small.render(line, True, BLACK)
             screen.blit(rendered, rendered.get_rect(center=(SCREEN_SIZE // 2, instructions_y + i * (SCREEN_SIZE // 15))))
 
         # Instructions
-        prompt = font_prompt.render("Press ENTER to Return to Leaderboard", True, BLACK)
+        prompt = FONTS.body_small.render("Press ENTER to Return to Leaderboard", True, BLACK)
         screen.blit(prompt, prompt.get_rect(center=(SCREEN_SIZE // 2, prompt_y)))
 
         pygame.display.update()
@@ -858,10 +814,6 @@ class Game:
 
         # Bonus Tracking
         self.bonus_points_total = 0
-
-        # UI Fonts
-        self.font_large = pygame.font.Font(MY_FONT, 64)
-        self.font_medium = pygame.font.Font(MY_FONT, 32)
 
         # Game Duration
         self.start_time = None
@@ -1163,9 +1115,11 @@ class Game:
         self.food.draw()
 
         if self.transitioning:
-            font = self.font_large
-            message = font.render(f"LEVEL {self.level}", True, WHITE)
-            text_rect = message.get_rect(center=(SCREEN_SIZE // 2, (SCREEN_SIZE // 2) + HUD_HEIGHT))
+            message = FONTS.title_large.render(f"LEVEL {self.level}", True, WHITE)
+            text_height = message.get_height()
+            center_x = SCREEN_SIZE // 2
+            center_y = (SCREEN_SIZE // 2) + HUD_HEIGHT - (text_height // 2)
+            text_rect = message.get_rect(center=(center_x, center_y))
             screen.blit(message, text_rect)
 
         self.draw_score()
@@ -1194,23 +1148,61 @@ class Game:
 
             screen.blit(frame, (px - offset_x, py - offset_y))
 
+
+
         if self.paused:
+            # Dim the entire screen
             pause_overlay = pygame.Surface((SCREEN_SIZE, SCREEN_SIZE + HUD_HEIGHT))
             pause_overlay.fill(BLACK)
             pause_overlay.set_alpha(256/4)
             screen.blit(pause_overlay, (0, 0))
+
+            # print("HUD height:", HUD_HEIGHT)
+            # print("SCREEN_SIZE:", SCREEN_SIZE)
+
+            # Get screen dimensions
+            screen_width, screen_height = screen.get_size()
+
+            # Define gameplay area (exclude HUD)
+            gameplay_top = HUD_HEIGHT
+            gameplay_height = screen_height - HUD_HEIGHT
+
+            # Center X and gameplay center Y
+            center_x = screen_width // 2
+            center_y = gameplay_top + (gameplay_height // 2)
+
+            # print(center_y)
+
+            # Render text
+            pause_text = FONTS.body_large.render("PAUSED", True, WHITE)
+            instruct_text = FONTS.body_large.render("PRESS P TO RESUME", True, WHITE)
+
+            # Total height of the two lines
+            pause_height = pause_text.get_height()
+            instruct_height = instruct_text.get_height()
+            total_height = pause_height + instruct_height
+
+            # print(pause_height)
+            # print(instruct_height)
+            # print(total_height)
             
-            font = self.font_large
-            pause_text = font.render("PAUSED", True, WHITE)
-            text_rect = pause_text.get_rect(center=(SCREEN_SIZE // 2, 
-                                                    SCREEN_SIZE // 2 + HUD_HEIGHT))
-            screen.blit(pause_text, text_rect)
+            # Top of the two-line block
+            block_top = center_y - (total_height // 2)
+
+            # First line
+            pause_rect = pause_text.get_rect(midtop=(center_x, block_top))
+            # Second line — immediately below first
+            instruct_rect = instruct_text.get_rect(midtop=(center_x, block_top + pause_height))
+
+            # print("pause_rect.top:", pause_rect.top)
+            # print("instruct_rect.bottom:", instruct_rect.bottom)
+
+            # print("Top to HUD:", pause_rect.top - HUD_HEIGHT)
+            # print("Bottom to screen:", (SCREEN_SIZE + HUD_HEIGHT) - instruct_rect.bottom)
             
-            font = self.font_medium
-            instruction = font.render("Press P to Resume", True, WHITE)
-            inst_rect = instruction.get_rect(center=(SCREEN_SIZE // 2, 
-                                                     SCREEN_SIZE // 2 + 50 + HUD_HEIGHT))
-            screen.blit(instruction, inst_rect)
+            # Blit both
+            screen.blit(pause_text, pause_rect)
+            screen.blit(instruct_text, instruct_rect)
 
         if not self.paused and self.bonus_active and self.bonus_position:
             px = self.bonus_position.x * CELL_SIZE
@@ -1220,8 +1212,7 @@ class Game:
 
         if self.bonus_popup:
             if not self.paused: 
-                popup_font = self.font_medium
-                popup_text = popup_font.render(self.bonus_popup["text"], True, WHITE)
+                popup_text = FONTS.label.render(self.bonus_popup["text"], True, WHITE)
                 popup_rect = popup_text.get_rect(center=self.bonus_popup["position"])
                 screen.blit(popup_text, popup_rect)
 
@@ -1235,12 +1226,6 @@ class Game:
         hud_bg = pygame.Rect(0, 0, SCREEN_SIZE, HUD_HEIGHT)
         pygame.draw.rect(screen, BLACK, hud_bg)
 
-        # Setup font and color
-        label_font = self.font_medium
-        value_font = self.font_medium
-        color = WHITE
-
-        # List of all stat strings
         stats = [
             f"Score: {self.score}",
             f"Size: {len(self.snake.body)}",
@@ -1258,10 +1243,10 @@ class Game:
 
             x_center = spacing * i + spacing // 2
 
-            label_surf = label_font.render(label.upper(), True, color)
+            label_surf = FONTS.label.render(label.upper(), True, WHITE)
             label_rect = label_surf.get_rect(center=(x_center, HUD_HEIGHT // 3))
 
-            value_surf = value_font.render(value, True, color)
+            value_surf = FONTS.label.render(value, True, WHITE)
             value_rect = value_surf.get_rect(center=(x_center, (HUD_HEIGHT * 2) // 3))
 
             screen.blit(label_surf, label_rect)
@@ -1277,14 +1262,8 @@ class Game:
         INSTRUCTION_MARGIN_BOTTOM = SCREEN_SIZE // 16
         ENTRY_LINE_SPACING = SCREEN_SIZE // 15
 
-        # Fonts
-        title_font = pygame.font.Font(MY_FONT, SCREEN_SIZE // 14)
-        header_font = pygame.font.Font(MY_FONT, SCREEN_SIZE // 18)
-        entry_font = pygame.font.Font(MY_FONT, SCREEN_SIZE // 20)  
-        instruction_font = pygame.font.Font(MY_FONT, SCREEN_SIZE // 20)
-
         # Draw Title
-        title_text = title_font.render("Python Portals Leaderboard", True, BLACK)
+        title_text = FONTS.title_medium.render("Python Portals Leaderboard", True, BLACK)
         title_rect = title_text.get_rect(center=(SCREEN_SIZE // 2, TITLE_MARGIN_TOP))
         screen.blit(title_text, title_rect)
 
@@ -1313,7 +1292,7 @@ class Game:
         spacing = SCREEN_SIZE // len(headers)
 
         for i, header in enumerate(headers):
-            header_surf = header_font.render(header, True, BLACK)
+            header_surf = FONTS.body_medium.render(header, True, BLACK)
             header_rect = header_surf.get_rect(center=(spacing * i + spacing // 2, 
                                                        HEADER_MARGIN_TOP))
             screen.blit(header_surf, header_rect)
@@ -1343,7 +1322,7 @@ class Game:
             is_highlight = self.highlight_entry_ts and entry.get("ts") == self.highlight_entry_ts
             row_color = (173, 216, 230) if is_highlight else WHITE
 
-            row_height = entry_font.get_height()
+            row_height = FONTS.body_small.get_height()
             row_y = entries_start_y + idx * ENTRY_LINE_SPACING
             row_top = row_y - row_height // 2  # center align background with text
 
@@ -1351,20 +1330,20 @@ class Game:
             pygame.draw.rect(screen, row_color, row_rect)
 
             for i, item in enumerate(row):
-                entry_surf = entry_font.render(item, True, BLACK)
+                entry_surf = FONTS.body_small.render(item, True, BLACK)
                 entry_rect = entry_surf.get_rect(center=(
                     spacing * i + spacing // 2,
                     entries_start_y + idx * ENTRY_LINE_SPACING
                 ))
                 screen.blit(entry_surf, entry_rect)
         
-        instructions_text = instruction_font.render(
+        instructions_text = FONTS.body_small.render(
             "Press ENTER to Play,", True, BLACK)
         instructions_rect = instructions_text.get_rect(
             center=(SCREEN_SIZE // 2, SCREEN_SIZE + HUD_HEIGHT - INSTRUCTION_MARGIN_BOTTOM*2))
         screen.blit(instructions_text, instructions_rect)
 
-        instructions_text_2 = instruction_font.render(
+        instructions_text_2 = FONTS.body_small.render(
             "H for How to Play, N for New Player", True, BLACK)
         instructions_rect_2 = instructions_text_2.get_rect(
             center=(SCREEN_SIZE // 2, SCREEN_SIZE + HUD_HEIGHT - INSTRUCTION_MARGIN_BOTTOM))
@@ -1461,7 +1440,6 @@ class Game:
             return
 
         victory_y = SCREEN_SIZE // 4
-        font_body = pygame.font.Font(MY_FONT, SCREEN_SIZE // 16)
 
         # Determine final top speed after one more level
         final_speed_ms = self.snake_speed_ms - self.speed_delta
@@ -1480,7 +1458,7 @@ class Game:
         screen.fill(WHITE)
 
         for i, line in enumerate(lines):
-            rendered = font_body.render(line, True, BLACK)
+            rendered = FONTS.body_large.render(line, True, BLACK)
             screen.blit(rendered, rendered.get_rect(center=(
                 SCREEN_SIZE // 2, victory_y + i * (SCREEN_SIZE // 15)))
                 )
