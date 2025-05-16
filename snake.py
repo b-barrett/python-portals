@@ -90,9 +90,6 @@ LAYOUTS = Layout(SCREEN_SIZE)
 LEADERBOARD_FILE = "assets/leaderboard/leaderboard.json"
 MAX_LEADERBOARD_ENTRIES = 10
 
-# Pull latest leaderboard only once at start of session
-git_pull_leaderboard()
-
 # Game Timing
 START_SPEED_SLOW = 240 # Initial speed in milliseconds
 START_SPEED_FAST = 135 # Initial speed in milliseconds
@@ -1508,134 +1505,139 @@ class Game:
 # region GAME INITIALIZATION & MAIN LOOP
 # === GAME INITIALIZATION & MAIN LOOP ===
 
-game, snake_skin, chosen_skin_name = initialize_game_session()
+def main():
+    git_pull_leaderboard()
+    game, snake_skin, chosen_skin_name = initialize_game_session()
 
-# Main game loop
-while True:
-    for event in pygame.event.get():
-        if event.type == pygame.KEYDOWN:
-            print(f"[DEBUG KEYDOWN] {pygame.key.name(event.key)}")
-
-        if event.type == pygame.QUIT:
-            pygame.quit()
-            sys.exit()
-
-        if game.show_leaderboard:
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_RETURN:
-                    game.apply_speed_mode(game.speed_mode) 
-                    game.food_voice_queue.clear()
-                    game.voice_queue_ready_time = 0
-                    game.reset_game_state()
-                    game.background_index = 0
-                    game.start_level()
-                    game.show_leaderboard = False
-                    game.highlight_entry_ts = None
-
-                elif event.key == pygame.K_h:
-                    show_instructions_screen(game)
-
-                elif event.key == pygame.K_n:
-                    # Get player inputs from welcome screen
-                    player_name, snake_skin, skin_index, selected_music_index, selected_voice_index, selected_speed, voice_enabled = prompt_player_name_skin_music_voice_speed()
-                    
-                    # Apply skin and player name
-                    game.apply_player_name_and_skin(player_name, skin_index)
-                    chosen_skin_name = skin_names[skin_index]
-                    
-                    # Set music and voice folder selections
-                    game.music_folder = music_folder_paths[selected_music_index]
-                    game.voice_folder = voice_pack_paths[selected_voice_index]
-                    game.yummy_sounds = load_yummy_sounds(game.voice_folder)
-                    
-                    # Clean up voice queue before reusing game object
-                    game.food_voice_queue.clear()
-                    game.voice_queue_ready_time = 0
-
-                    # Ensure speed mode and voice state are updated
-                    game.voice_enabled = voice_enabled
-                    game.speed_mode = selected_speed
-                    game.apply_speed_mode(game.speed_mode)  # ensure final_level updates BEFORE reset
-                    
-                    # Reset all game state
-                    game.reset_game_state()
-                    
-                    # Clear highlight from previous leaderboard entry
-                    game.highlight_entry_ts = None
-
-        else:
-            if event.type == TICK and not game.paused:
-                game.update()
-
-            # Restore music volume after food voice ends
-            if event.type == RESTORE_VOLUME_AFTER_FOOD_SOUND:
-                pygame.mixer.music.set_volume(1.0)
-                    
-            # keyboard controls
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_p:
-                    game.paused = not game.paused
-                    print(f"Game {'paused' if game.paused else 'resumed'}")
-                elif not game.paused and not game.transitioning:
-
-                    # See doc direction_vs_last_direction.md for full explanation.
-                    if event.key == pygame.K_UP and game.snake.last_direction != Vector2(0, 1):
-                        game.snake.direction = Vector2(0, -1)
-                    elif event.key == pygame.K_DOWN and game.snake.last_direction != Vector2(0, -1):
-                        game.snake.direction = Vector2(0, 1)
-                    elif event.key == pygame.K_LEFT and game.snake.last_direction != Vector2(1, 0):
-                        game.snake.direction = Vector2(-1, 0)
-                    elif event.key == pygame.K_RIGHT and game.snake.last_direction != Vector2(-1, 0):
-                        game.snake.direction = Vector2(1, 0)
-                    
-                    # Manual debug trigger
-                    elif event.key == pygame.K_d:  # D for debug
-                        print("=== Snake Debug Dump ===")
-                        for i, segment in enumerate(game.snake.body):
-                            print(f"  [{i}] {segment}")
-
-            #   mouse controls
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button in (1, 3): # Left, Right click
-                    mouse_x, mouse_y = pygame.mouse.get_pos()
-                    
-                    if game.bonus_active and game.bonus_position:
-                        bonus_rect = pygame.Rect(
-                            game.bonus_position.x * CELL_SIZE,
-                            game.bonus_position.y * CELL_SIZE + HUD_HEIGHT,
-                            CELL_SIZE,
-                            CELL_SIZE
-                        )
-                        if bonus_rect.collidepoint(mouse_x, mouse_y):
-                            bonus_points = game.level + 1
-                            game.score += bonus_points
-                            game.bonus_points_total += bonus_points
-                            game.bonus_sound.play()
-                            print(f"🎯 Bonus clicked: + {bonus_points}")
-                            game.bonus_active = False
-                            px = game.bonus_position.x * CELL_SIZE
-                            py = game.bonus_position.y * CELL_SIZE + HUD_HEIGHT
-                            game.bonus_popup = {
-                                "text": f"+{bonus_points}",
-                                "position": (px + CELL_SIZE // 2, py + CELL_SIZE // 2),
-                                "timer": 60  # Frames the popup will last (~1 second at 60 fps)
-                            }           
-
-    if game.show_victory_screen:
-        game.show_victory()
-
+    # Main game loop
+    while True:
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
-                print("⏩ Skipping to leaderboard early")
-                game.game_over()
-                game.show_victory_screen = False
-            elif event.type == pygame.QUIT:
+                print(f"[DEBUG KEYDOWN] {pygame.key.name(event.key)}")
+
+            if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
 
-        continue
+            if game.show_leaderboard:
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_RETURN:
+                        game.apply_speed_mode(game.speed_mode) 
+                        game.food_voice_queue.clear()
+                        game.voice_queue_ready_time = 0
+                        game.reset_game_state()
+                        game.background_index = 0
+                        game.start_level()
+                        game.show_leaderboard = False
+                        game.highlight_entry_ts = None
 
-    game.draw()
-    pygame.display.update()
-    clock.tick(60)
+                    elif event.key == pygame.K_h:
+                        show_instructions_screen(game)
+
+                    elif event.key == pygame.K_n:
+                        # Get player inputs from welcome screen
+                        player_name, snake_skin, skin_index, selected_music_index, selected_voice_index, selected_speed, voice_enabled = prompt_player_name_skin_music_voice_speed()
+                        
+                        # Apply skin and player name
+                        game.apply_player_name_and_skin(player_name, skin_index)
+                        chosen_skin_name = skin_names[skin_index]
+                        
+                        # Set music and voice folder selections
+                        game.music_folder = music_folder_paths[selected_music_index]
+                        game.voice_folder = voice_pack_paths[selected_voice_index]
+                        game.yummy_sounds = load_yummy_sounds(game.voice_folder)
+                        
+                        # Clean up voice queue before reusing game object
+                        game.food_voice_queue.clear()
+                        game.voice_queue_ready_time = 0
+
+                        # Ensure speed mode and voice state are updated
+                        game.voice_enabled = voice_enabled
+                        game.speed_mode = selected_speed
+                        game.apply_speed_mode(game.speed_mode)  # ensure final_level updates BEFORE reset
+                        
+                        # Reset all game state
+                        game.reset_game_state()
+                        
+                        # Clear highlight from previous leaderboard entry
+                        game.highlight_entry_ts = None
+
+            else:
+                if event.type == TICK and not game.paused:
+                    game.update()
+
+                # Restore music volume after food voice ends
+                if event.type == RESTORE_VOLUME_AFTER_FOOD_SOUND:
+                    pygame.mixer.music.set_volume(1.0)
+                        
+                # keyboard controls
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_p:
+                        game.paused = not game.paused
+                        print(f"Game {'paused' if game.paused else 'resumed'}")
+                    elif not game.paused and not game.transitioning:
+
+                        # See doc direction_vs_last_direction.md for full explanation.
+                        if event.key == pygame.K_UP and game.snake.last_direction != Vector2(0, 1):
+                            game.snake.direction = Vector2(0, -1)
+                        elif event.key == pygame.K_DOWN and game.snake.last_direction != Vector2(0, -1):
+                            game.snake.direction = Vector2(0, 1)
+                        elif event.key == pygame.K_LEFT and game.snake.last_direction != Vector2(1, 0):
+                            game.snake.direction = Vector2(-1, 0)
+                        elif event.key == pygame.K_RIGHT and game.snake.last_direction != Vector2(-1, 0):
+                            game.snake.direction = Vector2(1, 0)
+                        
+                        # Manual debug trigger
+                        elif event.key == pygame.K_d:  # D for debug
+                            print("=== Snake Debug Dump ===")
+                            for i, segment in enumerate(game.snake.body):
+                                print(f"  [{i}] {segment}")
+
+                #   mouse controls
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button in (1, 3): # Left, Right click
+                        mouse_x, mouse_y = pygame.mouse.get_pos()
+                        
+                        if game.bonus_active and game.bonus_position:
+                            bonus_rect = pygame.Rect(
+                                game.bonus_position.x * CELL_SIZE,
+                                game.bonus_position.y * CELL_SIZE + HUD_HEIGHT,
+                                CELL_SIZE,
+                                CELL_SIZE
+                            )
+                            if bonus_rect.collidepoint(mouse_x, mouse_y):
+                                bonus_points = game.level + 1
+                                game.score += bonus_points
+                                game.bonus_points_total += bonus_points
+                                game.bonus_sound.play()
+                                print(f"🎯 Bonus clicked: + {bonus_points}")
+                                game.bonus_active = False
+                                px = game.bonus_position.x * CELL_SIZE
+                                py = game.bonus_position.y * CELL_SIZE + HUD_HEIGHT
+                                game.bonus_popup = {
+                                    "text": f"+{bonus_points}",
+                                    "position": (px + CELL_SIZE // 2, py + CELL_SIZE // 2),
+                                    "timer": 60  # Frames the popup will last (~1 second at 60 fps)
+                                }           
+
+        if game.show_victory_screen:
+            game.show_victory()
+
+            for event in pygame.event.get():
+                if event.type == pygame.KEYDOWN:
+                    print("⏩ Skipping to leaderboard early")
+                    game.game_over()
+                    game.show_victory_screen = False
+                elif event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+
+            continue
+
+        game.draw()
+        pygame.display.update()
+        clock.tick(60)
 
 # endregion
+
+if __name__ == "__main__":
+    main()
