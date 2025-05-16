@@ -507,7 +507,7 @@ def prompt_player_name_skin_music_voice_speed():
         screen.blit(speed_label_surf, speed_label_rect)
         
         # Skin Label
-        skin_label_surf = FONTS.title_medium.render(f"Snakeskin: {skin_names[skin_index]}", True, BLACK)
+        skin_label_surf = FONTS.title_medium.render(f"Skin: {skin_names[skin_index]}", True, BLACK)
         skin_label_rect = skin_label_surf.get_rect(center=(SCREEN_SIZE // 2, skin_y))
         screen.blit(skin_label_surf, skin_label_rect)
 
@@ -528,13 +528,13 @@ def prompt_player_name_skin_music_voice_speed():
         screen.blit(skin_preview, (skin_preview_x, skin_preview_y - SKIN_PREVIEW_SIZE // 2))
 
         # Music Instructions
-        ud_arrow_surf = FONTS.body_medium.render("Select Music with Up/Down Arrows", True, BLACK)
+        ud_arrow_surf = FONTS.body_medium.render("Select Music with Up/Down Arrow", True, BLACK)
         ud_arrow_rect = ud_arrow_surf.get_rect(
             center=(SCREEN_SIZE // 2, SCREEN_SIZE + HUD_HEIGHT - LAYOUTS.welcome_margin_bottom*4))
         screen.blit(ud_arrow_surf, ud_arrow_rect)
         
         # Skin Instructions
-        lr_arrow_surf = FONTS.body_medium.render("Select Skin with Left/Right Arrows", True, BLACK)
+        lr_arrow_surf = FONTS.body_medium.render("Select Skin with Left/Right Arrow", True, BLACK)
         lr_arrow_rect = lr_arrow_surf.get_rect(
             center=(SCREEN_SIZE // 2, SCREEN_SIZE + HUD_HEIGHT - LAYOUTS.welcome_margin_bottom*3))
         screen.blit(lr_arrow_surf, lr_arrow_rect)
