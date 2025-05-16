@@ -88,5 +88,15 @@
         "bonus": 5,
         "ts": 1747345379.900773,
         "duration": "2:42"
+    },
+    {
+        "name": "Automate",
+        "score": 20,
+        "size": 10,
+        "date": "05/16/25",
+        "level": 2,
+        "bonus": 7,
+        "ts": 1747426116.989064,
+        "duration": "3:15"
     }
 ]
