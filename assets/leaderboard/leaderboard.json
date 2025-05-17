@@ -40,16 +40,6 @@
         "duration": "4:10"
     },
     {
-        "name": "AutoMate",
-        "score": 42,
-        "size": 16,
-        "date": "05/16/25",
-        "level": 4,
-        "bonus": 8,
-        "ts": 1747426936.523315,
-        "duration": "1:28"
-    },
-    {
         "name": "minchodos",
         "score": 265,
         "size": 44,
@@ -98,5 +88,15 @@
         "bonus": 5,
         "ts": 1747345379.900773,
         "duration": "2:42"
+    },
+    {
+        "name": "AutoMate",
+        "score": 42,
+        "size": 16,
+        "date": "05/16/25",
+        "level": 4,
+        "bonus": 8,
+        "ts": 1747426936.523315,
+        "duration": "1:28"
     }
 ]

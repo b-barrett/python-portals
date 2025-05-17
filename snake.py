@@ -45,11 +45,11 @@ screen_width = info.current_w
 screen_height = info.current_h
 
 CELL_SIZE = 30
-NUM_CELLS = min(int(screen_width * 0.8) // CELL_SIZE, 
-                int(screen_height * 0.8) // CELL_SIZE)
+NUM_CELLS = min(int(screen_width * 0.82) // CELL_SIZE, 
+                int(screen_height * 0.82) // CELL_SIZE)
 SCREEN_SIZE = CELL_SIZE * NUM_CELLS
 
-HUD_HEIGHT = int(screen_height * 0.08)
+HUD_HEIGHT = int(screen_height * 0.10)
 OFFSET = Vector2(0, HUD_HEIGHT)  # Global offset for drawing under HUD
 
 screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE + HUD_HEIGHT), pygame.SCALED)
@@ -1339,10 +1339,10 @@ class Game:
 
             x_center = spacing * i + spacing // 2
 
-            label_surf = FONTS.label.render(label.upper(), True, WHITE)
+            label_surf = FONTS.body_small.render(label.upper(), True, WHITE)
             label_rect = label_surf.get_rect(center=(x_center, HUD_HEIGHT // 3))
 
-            value_surf = FONTS.label.render(value, True, WHITE)
+            value_surf = FONTS.body_small.render(value, True, WHITE)
             value_rect = value_surf.get_rect(center=(x_center, (HUD_HEIGHT * 2) // 3))
 
             screen.blit(label_surf, label_rect)

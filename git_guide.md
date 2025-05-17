@@ -381,3 +381,77 @@ Let’s revisit this after your Git/GitHub workflow is stable.
 | Pygame + Python requirements tracked    | ✅     |
 
 You're fully Git-enabled now. Ready to level up.
+
+# Merge Leaderboards
+
+# STEP 1: Each dev saves their leaderboard as a named file
+
+## Each dev runs this once:
+
+```bash
+cp assets/leaderboard/leaderboard.json assets/leaderboard/<yourname>.json
+```
+
+```bash
+git add assets/leaderboard/<yourname>.json
+git commit -m "Add <YourName>'s leaderboard"
+git push origin main
+```
+
+## One-liner:
+```bash
+git add <name>.json && git commit -m "Add my scores" && git push
+```
+
+## Examples:
+
+```bash
+cp assets/leaderboard/leaderboard.json assets/leaderboard/thomas.json
+git add assets/leaderboard/thomas.json
+git commit -m "Add Thomas's leaderboard"
+git push origin main
+```
+
+## Each dev repeats this with their own name:
+
+* elisa.json
+* ben.json
+* julia.json
+
+These files all live in the same folder:
+`assets/leaderboard`
+
+# STEP 2: One dev runs the merge (e.g. Thomas)
+
+You (Thomas) now:
+
+```bash
+git pull origin main  # Get everyone's jsons including yours
+```
+
+# Or:
+```bash
+git pull
+```
+
+Then launch the game and press M on the leaderboard screen to trigger:
+
+```bash
+merge_named_leaderboards()
+```
+
+That does:
+
+* Reads thomas.json, jamie.json, ari.json
+* Deduplicates scores
+* Sorts and keeps top 10
+* Saves them into leaderboard.json
+* Auto-commits & pushes back to GitHub
+
+# STEP 3: The final leaderboard is now shared
+
+All devs can now run:
+
+```bash
+git pull origin main
+```
