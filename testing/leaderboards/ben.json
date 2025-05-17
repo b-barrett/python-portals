@@ -1,0 +1,12 @@
+[
+    {"name": "Ben", "score": 510, "size": 50, "level": 11, "bonus": 60, "date": "05/16/25", "ts": 1747420600.1, "duration": "6:12"},
+    {"name": "Ben", "score": 475, "size": 48, "level": 11, "bonus": 58, "date": "05/15/25", "ts": 1747330600.2, "duration": "5:57"},
+    {"name": "Ben", "score": 400, "size": 43, "level": 9, "bonus": 45, "date": "05/14/25", "ts": 1747240600.3, "duration": "5:14"},
+    {"name": "Ben", "score": 320, "size": 39, "level": 8, "bonus": 35, "date": "05/13/25", "ts": 1747150600.4, "duration": "4:35"},
+    {"name": "Ben", "score": 270, "size": 35, "level": 7, "bonus": 30, "date": "05/12/25", "ts": 1747060600.5, "duration": "4:01"},
+    {"name": "Ben", "score": 230, "size": 33, "level": 6, "bonus": 26, "date": "05/11/25", "ts": 1746970600.6, "duration": "3:45"},
+    {"name": "Ben", "score": 190, "size": 31, "level": 5, "bonus": 22, "date": "05/10/25", "ts": 1746880600.7, "duration": "3:28"},
+    {"name": "Ben", "score": 160, "size": 28, "level": 4, "bonus": 18, "date": "05/09/25", "ts": 1746790600.8, "duration": "3:10"},
+    {"name": "Ben", "score": 120, "size": 25, "level": 3, "bonus": 15, "date": "05/08/25", "ts": 1746700600.9, "duration": "2:52"},
+    {"name": "Ben", "score": 100, "size": 22, "level": 2, "bonus": 10, "date": "05/07/25", "ts": 1746610601.0, "duration": "2:31"}
+]

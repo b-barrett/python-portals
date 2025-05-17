@@ -419,7 +419,7 @@ def update_leaderboard(player_name, score, snake_length, level, bonus_points, du
             x["score"],
             x["size"], 
             x["level"],
-            -int(100 * x["bonus"] / x["score"]) if x["score"] > 0 else float("-inf")
+            int(-100 * x["bonus"] / x["score"]) if x["score"] > 0 else float("inf")
         ),
         reverse=True
     )
@@ -428,6 +428,8 @@ def update_leaderboard(player_name, score, snake_length, level, bonus_points, du
     save_leaderboard(leaderboard)
 
     return timestamp if any(entry.get("ts") == timestamp for entry in leaderboard) else None
+
+
 
 # endregion
 
@@ -1052,6 +1054,7 @@ class Game:
         if self.portal_open and head == self.portal_position:
             self.portal_sound.play()
             print(f"[DEBUG] Portal entered at level {self.level}")
+            print(f"[DEBUG] Snake entered portal at {self.portal_position} on '{self.last_portal_side}' wall.")
 
             if self.level == self.final_level - 1:
                 print(f"[DEBUG] Triggering victory screen for final_level={self.final_level}")
@@ -1087,6 +1090,17 @@ class Game:
         head_pos = (head.x, head.y)
         if head_pos in body_positions:
             self.game_over()
+
+    def detect_wall_side(self, pos):
+        if pos.x == 0:
+            return "left"
+        elif pos.x == NUM_CELLS - 1:
+            return "right"
+        elif pos.y == 0:
+            return "top"
+        elif pos.y == NUM_CELLS - 1:
+            return "bottom"
+
 
     def game_over(self):
         if self.game_over_already_ran:
@@ -1175,8 +1189,6 @@ class Game:
 
             screen.blit(frame, (px - offset_x, py - offset_y))
 
-
-
         if self.paused:
             # Dim the entire screen
             pause_overlay = pygame.Surface((SCREEN_SIZE, SCREEN_SIZE + HUD_HEIGHT))
@@ -1246,7 +1258,6 @@ class Game:
                 self.bonus_popup["timer"] -= 1
                 if self.bonus_popup["timer"] <= 0:
                     self.bonus_popup = None  # Erase popup after time expires
-
 
     def draw_score(self):
         # Draw HUD background
@@ -1394,18 +1405,26 @@ class Game:
                 x = NUM_CELLS - 1
                 y = random.randint(1, NUM_CELLS - 2)
 
-            candidate = Vector2(x, y)
-            if candidate != self.food.position:
-                self.portal_position = candidate
+            portal_position = Vector2(x, y)
+            if portal_position != self.food.position:
+
+                self.portal_position = portal_position # portal position in current level
                 self.portal_open = True
+
+                # Store portal metadata for use in next level spawn
+                self.last_portal_position = portal_position # "saved copy" of most recent portal position 
+                self.last_portal_side = wall
+
                 print(f"\U0001f6aa Portal spawned at ({x}, {y})")
                 break
 
             attempts += 1
             if attempts > 3:
                 print("⚠️ Did not find portal position not occupied by food after 3 tries (~1 in 72 million)")
-                self.portal_position = candidate # portal and food overlap
+                self.portal_position = portal_position # portal and food overlap
                 self.portal_open = True
+                self.last_portal_position = portal_position
+                self.last_portal_side = wall
                 break  
 
         if attempts > 0 and self.portal_open:
@@ -1429,13 +1448,55 @@ class Game:
         
         snake_length = len(self.snake.body) # Store snake length before reset
     
-        self.snake = Snake(self.head_color, self.snake_body_image) # Reset position to single seg at center
-        starting_pos = Vector2(NUM_CELLS // 2, NUM_CELLS // 2)
-        # Rebuild snake body with preserved length
+        # # === old: snake starts at center each level ===
+        # self.snake = Snake(self.head_color, self.snake_body_image) # Reset position to single seg at center
+        # starting_pos = Vector2(NUM_CELLS // 2, NUM_CELLS // 2)
+        
+        # # Rebuild snake body with preserved length
+        # for i in range(1, snake_length):
+        #     segment_pos = starting_pos - self.snake.direction * i
+        #     self.snake.body.append(segment_pos)
+        # # === old: snake starts at center each level ===
+
+        # === new: snake starts from side opposite portal that it entered on transition from previous level ===
+        if self.level > 1 and self.last_portal_position and self.last_portal_side:
+            x = self.last_portal_position.x
+            y = self.last_portal_position.y
+
+            if self.last_portal_side == "left":
+                starting_pos = Vector2(NUM_CELLS - 1, y)  # enter from right
+                direction = Vector2(-1, 0)
+            elif self.last_portal_side == "right":
+                starting_pos = Vector2(0, y)  # enter from left
+                direction = Vector2(1, 0)
+            elif self.last_portal_side == "top":
+                starting_pos = Vector2(x, NUM_CELLS - 1)  # enter from bottom
+                direction = Vector2(0, -1)
+            elif self.last_portal_side == "bottom":
+                starting_pos = Vector2(x, 0)  # enter from top
+                direction = Vector2(0, 1)
+            else:
+                print("[DEBUG] Unexpected self.last_portal_side. Defaulting to center spawn.")
+                starting_pos = Vector2(NUM_CELLS // 2, NUM_CELLS // 2)
+                direction = Vector2(1, 0)
+        else:
+            starting_pos = Vector2(NUM_CELLS // 2, NUM_CELLS // 2)
+            direction = Vector2(1, 0)
+
+        self.snake = Snake(self.head_color, self.snake_body_image)
+        self.snake.direction = direction
+        self.snake.last_direction = direction
+        self.snake.body = [starting_pos]
+        portal_side = getattr(self, "last_portal_side", "N/A")
+        print(f"[DEBUG] Snake spawned at {starting_pos} facing {direction} (opposite '{portal_side}' wall).")
+
+        # Build out the snake's body segments
         for i in range(1, snake_length):
-            segment_pos = starting_pos - self.snake.direction * i
+            segment_pos = starting_pos - direction * i
             self.snake.body.append(segment_pos)
         
+        # === new: snake starts from side opposite portal that it entered on transition from previous level ===
+
         self.food_name, self.food_image = self.current_food()
         self.food = Food(self.snake.body, self.food_image)
 
@@ -1454,7 +1515,6 @@ class Game:
         name = os.path.splitext(os.path.basename(valid_food_paths[index]))[0].lower()
         return name, image
     
-
     def show_victory(self):
         """Display the Victory screen after completing level 21."""
         self.transitioning = False  # Defensive: ensure level doesn’t accidentally start

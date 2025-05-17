@@ -1,6 +1,8 @@
 # .gitignore
-__pycache__/       # Python's temp bytecode cache folders
-*.pyc              # Compiled Python files (not source)
-*.pyo              # Optimized .pyc (rare, but auto-generated)
-*.save             # Ignore future save files (if you add game state persistence)
-.DS_Store          # macOS file metadata (clutters up repos)
+__pycache__/    # Python's temp bytecode cache folders
+*.pyc           # Compiled Python files (not source)
+*.pyo           # Optimized .pyc (rare, but auto-generated)
+*.save          # Ignore future save files (if you add game state persistence)
+.DS_Store       # macOS file metadata (clutters up repos)
+/testing/       # Assorted test scripts including merging leaderboard
+
