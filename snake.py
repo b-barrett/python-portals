@@ -51,7 +51,7 @@ SCREEN_SIZE = CELL_SIZE * NUM_CELLS
 HUD_HEIGHT = int(screen_height * 0.08)
 OFFSET = Vector2(0, HUD_HEIGHT)  # Global offset for drawing under HUD
 
-screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE + HUD_HEIGHT))
+screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE + HUD_HEIGHT), pygame.SCALED)
 pygame.display.set_caption("Python Portals")
 
 clock = pygame.time.Clock()

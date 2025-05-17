@@ -279,6 +279,85 @@ git pull origin main
 
 ---
 
+
+## 🪛 Typical Developer Flow (Daily Use)
+
+### 🎁 1. Sync Before You Start
+
+```bash
+git fetch        # Check for remote changes without modifying your files
+git status       # See if your branch is behind
+```
+
+If you see:
+
+```
+Your branch is behind 'origin/main' by X commits.
+```
+
+Then do:
+
+```bash
+git pull         # Only if you’re ready to bring in remote changes
+```
+
+### 🛠️ 2. Make Local Changes
+
+Edit your code, run the game, test new features, etc.
+
+### 💾 3. Save Your Work
+
+```bash
+git add -A                                      # Stage everything
+git commit -m "<Concise but descriptive message>"  # Save a snapshot
+```
+
+### ☁️ 4. Push Changes to GitHub
+
+```bash
+git push
+```
+
+---
+
+## 👯‍♀️ Working With Multiple Devs
+
+### 🔄 Everyone Should:
+
+* Pull changes **before starting work** (see step 1)
+* Push changes after committing
+
+### 🧪 Testing Tournament Workflow
+
+* Each dev saves their leaderboard as `assets/leaderboard/<name>.json`
+* One dev runs `merge_named_leaderboards()` locally
+* After verifying the new top 10, they push `leaderboard.json`
+
+---
+
+## 🔍 Bonus Git Tips
+
+### See Remote Differences Without Pulling
+
+```bash
+git fetch
+git diff main origin/main    # Compare local vs remote main
+```
+
+### View Incoming Commits
+
+```bash
+git log origin/main --oneline --decorate --graph --all
+```
+
+### Revert a File to Match Remote
+
+```bash
+git checkout origin/main -- path/to/file.py
+```
+
+Let me know if you want this guide rendered into a README.md or printed to terminal!
+
 ## 📅 Packaging (Future Step)
 
 You can optionally convert the game into a `.exe` (Windows) or `.app` (Mac) for easier sharing with:
