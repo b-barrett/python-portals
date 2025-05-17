@@ -90,13 +90,13 @@
         "duration": "1:49"
     },
     {
-        "score": 42,
-        "ts": 1747426936.523315,
-        "name": "AutoMate",
-        "level": 4,
-        "duration": "1:28",
-        "date": "05/16/25",
+        "name": "Portl",
+        "score": 46,
         "size": 16,
-        "bonus": 8
+        "date": "05/16/25",
+        "level": 4,
+        "bonus": 16,
+        "ts": 1747450029.688944,
+        "duration": "1:34"
     }
 ]
