@@ -16,6 +16,7 @@ import tempfile
 # Third-party
 import pygame
 from pygame.math import Vector2
+import pygame.freetype
 
 # Initialize all pygame modules (important: call before any mixer or display operations)
 pygame.init()
@@ -63,6 +64,7 @@ BLACK = (0, 0, 0)
 GAME_NAME = "Python Portals"
 
 MY_FONT = "assets/fonts/VT323-Regular.ttf"
+EMOJI_FONT = "Apple Color Emoji"
 
 class Font:
     def __init__(self, screen_size):
@@ -73,6 +75,7 @@ class Font:
         self.body_medium = pygame.font.Font(path, screen_size // 18)
         self.body_small = pygame.font.Font(path, screen_size // 20)
         self.label = pygame.font.Font(path, screen_size // 24)
+        self.emoji = pygame.freetype.Font("/System/Library/Fonts/Apple Color Emoji.ttc", 64)
 
 FONTS = Font(SCREEN_SIZE)
 
@@ -276,9 +279,9 @@ backgrounds = [
     for path in background_files
 ]
 
-# Load leaderboard trophy
-trophy_img = load_image("assets/leaderboard/trophy.png", 
-                        size=(CELL_SIZE*2, CELL_SIZE*2), use_alpha=False, transparency=255)
+# # Load leaderboard trophy
+# trophy_img = load_image("assets/leaderboard/trophy.png", 
+#                         size=(CELL_SIZE*2, CELL_SIZE*2), use_alpha=False, transparency=255)
 
 # Get all .png files in assets/food/food64
 all_food_paths = glob.glob("assets/food/food64/*.png")
@@ -1357,28 +1360,29 @@ class Game:
 
         # Draw Title
         title_text = FONTS.title_medium.render("Python Portals Leaderboard", True, BLACK)
-        title_rect = title_text.get_rect(center=(SCREEN_SIZE // 2, TITLE_MARGIN_TOP))
-        screen.blit(title_text, title_rect)
+        trophy_unicode = "\U0001F3C6"
+        trophy_emoji_surf, _ = FONTS.emoji.render(trophy_unicode, BLACK)
 
-        # Calculate positions
-        total_width = trophy_img.get_width() + title_text.get_width() + trophy_img.get_width() + 40
+        emoji_spacing = 20
+        emoji_width = trophy_emoji_surf.get_width()
+        title_width = title_text.get_width()
+        total_width = emoji_width + emoji_spacing + title_width + emoji_spacing + emoji_width
 
-        center_x = SCREEN_SIZE // 2
+        row_start_x = SCREEN_SIZE // 2 - total_width // 2
 
-        left_trophy_x = center_x - total_width // 2
-        text_x = left_trophy_x + trophy_img.get_width() + 20
-        right_trophy_x = text_x + title_text.get_width() + 20
+        left_emoji_center_x = row_start_x + emoji_width // 2
+        title_center_x = left_emoji_center_x + emoji_width // 2 + emoji_spacing + title_width // 2
+        right_emoji_center_x = title_center_x + title_width // 2 + emoji_spacing + emoji_width // 2
 
         y = TITLE_MARGIN_TOP
 
-        # Blit left trophy
-        screen.blit(trophy_img, (left_trophy_x, y - trophy_img.get_height() // 2))
+        left_emoji_rect = trophy_emoji_surf.get_rect(center=(left_emoji_center_x, y))
+        title_rect = title_text.get_rect(center=(title_center_x, y))
+        right_emoji_rect = trophy_emoji_surf.get_rect(center=(right_emoji_center_x, y))
 
-        # Blit title
-        screen.blit(title_text, (text_x, y - title_text.get_height() // 2))
-
-        # Blit right trophy
-        screen.blit(trophy_img, (right_trophy_x, y - trophy_img.get_height() // 2))
+        screen.blit(trophy_emoji_surf, left_emoji_rect)
+        screen.blit(title_text, title_rect)
+        screen.blit(trophy_emoji_surf, right_emoji_rect)
 
         # Draw Headers
         headers = ["Rank", "Name", "Score", "Size", "Lvl", "Bns", "Dur", "Date"]
