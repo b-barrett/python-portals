@@ -1,0 +1,32 @@
+[
+    {
+        "name": "BB",
+        "score": 348,
+        "size": 50,
+        "date": "05/13/25",
+        "level": 11,
+        "bonus": 78,
+        "ts": 1747197667.541949,
+        "duration": "3:39"
+    },
+    {
+        "name": "BTB22",
+        "score": 310,
+        "size": 47,
+        "date": "05/13/25",
+        "level": 10,
+        "bonus": 60,
+        "ts": 1747196136.936971,
+        "duration": "4:10"
+    },
+    {
+        "name": "Julia A",
+        "score": 46,
+        "size": 16,
+        "date": "05/17/25",
+        "level": 4,
+        "bonus": 16,
+        "ts": 1747528400.118623,
+        "duration": "1:03"
+    }
+]
