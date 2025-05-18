@@ -1,25 +1,5 @@
 [
     {
-        "name": "Bennie B",
-        "score": 745,
-        "size": 74,
-        "date": "05/16/25",
-        "level": 16,
-        "bonus": 122,
-        "ts": 1747420554.53284,
-        "duration": "5:32"
-    },
-    {
-        "name": "juali",
-        "score": 466,
-        "size": 22,
-        "date": "05/11/25",
-        "level": 15,
-        "bonus": 314,
-        "ts": 1746977750.350551,
-        "duration": "6:32"
-    },
-    {
         "name": "BB",
         "score": 348,
         "size": 50,
@@ -40,63 +20,13 @@
         "duration": "4:10"
     },
     {
-        "name": "minchodos",
-        "score": 265,
-        "size": 44,
-        "date": "05/12/25",
-        "level": 10,
-        "bonus": 30,
-        "ts": 1747085044.988223,
-        "duration": "5:32"
-    },
-    {
-        "name": "Jammin",
-        "score": 249,
-        "size": 41,
-        "date": "05/12/25",
-        "level": 10,
-        "bonus": 36,
-        "ts": 1747077324.414953,
-        "duration": "8:51"
-    },
-    {
-        "name": "Ben",
-        "score": 193,
-        "size": 38,
-        "date": "05/12/25",
-        "level": 9,
-        "bonus": 11,
-        "ts": 1747079153.310093,
-        "duration": "5:56"
-    },
-    {
-        "name": "Benny B",
-        "score": 164,
-        "size": 35,
-        "date": "05/12/25",
-        "level": 8,
-        "bonus": 23,
-        "ts": 1747077481.770732,
-        "duration": "2:26"
-    },
-    {
-        "name": "BBBBBBBB",
-        "score": 148,
-        "size": 36,
-        "date": "05/15/25",
-        "level": 2,
-        "bonus": 5,
-        "ts": 1747345379.900773,
-        "duration": "2:42"
-    },
-    {
-        "name": "AutoMate",
-        "score": 42,
+        "name": "Julia A",
+        "score": 46,
         "size": 16,
-        "date": "05/16/25",
+        "date": "05/17/25",
         "level": 4,
-        "bonus": 8,
-        "ts": 1747426936.523315,
-        "duration": "1:28"
+        "bonus": 16,
+        "ts": 1747528400.118623,
+        "duration": "1:03"
     }
 ]
