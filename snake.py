@@ -44,9 +44,9 @@ info = pygame.display.Info()
 screen_width = info.current_w
 screen_height = info.current_h
 
-CELL_SIZE = 30
-NUM_CELLS = min(int(screen_width * 0.82) // CELL_SIZE, 
-                int(screen_height * 0.82) // CELL_SIZE)
+NUM_CELLS = 26
+CELL_SIZE = min(int(screen_width * 0.82) // NUM_CELLS, 
+                int(screen_height * 0.82) // NUM_CELLS)
 SCREEN_SIZE = CELL_SIZE * NUM_CELLS
 
 HUD_HEIGHT = int(screen_height * 0.10)
