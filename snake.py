@@ -82,7 +82,7 @@ FONTS = Font(SCREEN_SIZE)
 class Layout:
         def __init__(self, screen_size):
             self.center_x = screen_size // 2 # refactor "SCREEN_SIZE // 2" to LAYOUTS.center_x
-            self.welcome_margin_bottom = screen_size // 15
+            self.welcome_margin_bottom = screen_size // 16
 
 # keyword(s) for layout consolidation if using class Layout: 
 # spacing, margin, layout, screen_size, _y, _x, cell_size
@@ -90,6 +90,7 @@ class Layout:
 LAYOUTS = Layout(SCREEN_SIZE)
 
 # Leaderboard
+# TOURNAMENT_MODE = True  # Set this via UI toggle at start screen
 LEADERBOARD_FILE = "assets/leaderboard/leaderboard.json"
 MAX_LEADERBOARD_ENTRIES = 10
 
@@ -279,10 +280,6 @@ backgrounds = [
     for path in background_files
 ]
 
-# # Load leaderboard trophy
-# trophy_img = load_image("assets/leaderboard/trophy.png", 
-#                         size=(CELL_SIZE*2, CELL_SIZE*2), use_alpha=False, transparency=255)
-
 # Get all .png files in assets/food/food64
 all_food_paths = glob.glob("assets/food/food64/*.png")
 
@@ -308,6 +305,29 @@ food_images = [
 # region LEADERBOARD LOGIC
 # === LEADERBOARD LOGIC ===
 
+def get_leaderboard_path(player_name=None, tournament_mode=False):
+    if tournament_mode and player_name:
+        safe_name = player_name.lower().replace(" ", "_")
+        return os.path.join("assets", "leaderboard", f"{safe_name}.json")
+    return LEADERBOARD_FILE
+    
+def load_active_leaderboard(player_name=None, tournament_mode=False):
+    path = get_leaderboard_path(player_name, tournament_mode)
+    print(path)
+    if os.path.exists(path):
+        with open(path, "r") as f:
+            return json.load(f)
+    return []
+
+def save_active_leaderboard(player_name, leaderboard, tournament_mode=False):
+    path = get_leaderboard_path(player_name, tournament_mode)
+    try:
+        with open(path, "w") as f:
+            json.dump(leaderboard, f, indent=4)
+        print(f"✅ Saved leaderboard to {path}")
+    except Exception as e:
+        print(f"[ERROR] Failed to save leaderboard: {e}")
+
 def git_pull_leaderboard():
     if os.path.isdir(".git"):
         try:
@@ -330,22 +350,25 @@ def git_push_leaderboard():
     else:
         print("Git push skipped (not a Git repo)")
 
+# def save_personal_leaderboard(player_name, leaderboard):
+#     """Save the current leaderboard to a personal file named after the player."""
+#     if not player_name:
+#         print("[ERROR] Player name not set; cannot save leaderboard.")
+#         return
 
+#     safe_name = player_name.lower().replace(" ", "_")
+#     path = os.path.join("assets", "leaderboard", f"{safe_name}.json")
+
+#     try:
+#         with open(path, "w") as f:
+#             json.dump(leaderboard, f, indent=4)
+#         print(f"✅ Saved personal leaderboard → {path}")
+#     except Exception as e:
+#         print(f"[ERROR] Failed to save personal leaderboard: {e}")
 
 def load_leaderboard():
-    """
-    Load and return the leaderboard data from a JSON file.
-
-    Attempts to read the leaderboard data from the predefined file path (LEADERBOARD_FILE).
-    Returns an empty list if the file doesn't exist, is unreadable, or contains invalid data.
-
-    Returns:
-        list: A list of leaderboard entries if the file is valid,
-              or an empty list otherwise.
-    """
     if not os.path.exists(LEADERBOARD_FILE):
         return []
-    
     try:
         with open(LEADERBOARD_FILE, "r") as file:
             data = json.load(file)
@@ -378,32 +401,17 @@ def save_leaderboard(leaderboard):
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
 
-def update_leaderboard(player_name, score, snake_length, level, bonus_points, duration=None):
+def update_leaderboard(player_name, score, snake_length, level, bonus_points, duration=None, tournament_mode=False):
     """
-    Updates the game's leaderboard with new player data and returns timestamp if entry was successful.
+    Add a new entry to the leaderboard (global or personal based on tournament_mode),
+    sort it, keep the top N, and save it to the correct file.
 
-    Args:
-        player_name (str): Name of the player to add to leaderboard
-        score (int): Player's final score
-        snake_length (int): Final length of player's snake
-        level (int): Level reached by player
-        bonus_points (int): Additional bonus points earned
-
-    Returns:
-        float or None: Timestamp of the entry if successfully added to leaderboard, None if entry didn't make the cut
-
-    Note:
-        - Leaderboard is sorted by score (primary), snake size (secondary), and level (tertiary) in descending order
-        - Only keeps top entries up to MAX_LEADERBOARD_ENTRIES
-        - Automatically adds current date and timestamp to entry
-        - Saves updated leaderboard to storage after modification
-
-    Example:
-        >>> timestamp = update_leaderboard("Player1", 100, 10, 2, 50)
-        >>> print(timestamp)
-        1634567890.123
+    Returns the timestamp of the new entry if it's in the top N.
     """
-    leaderboard = load_leaderboard()
+    
+    # Load the appropriate leaderboard (global or personal)
+    leaderboard = load_active_leaderboard(player_name, tournament_mode)
+    
     today = datetime.datetime.now().strftime("%m/%d/%y")
     timestamp = datetime.datetime.now().timestamp()
     leaderboard.append({
@@ -428,7 +436,9 @@ def update_leaderboard(player_name, score, snake_length, level, bonus_points, du
     )
 
     leaderboard = leaderboard[:MAX_LEADERBOARD_ENTRIES]
-    save_leaderboard(leaderboard)
+    
+    # Save to correct path
+    save_active_leaderboard(player_name, leaderboard, tournament_mode)
 
     return timestamp if any(entry.get("ts") == timestamp for entry in leaderboard) else None
 
@@ -437,7 +447,7 @@ def merge_named_leaderboards():
     folder = os.path.dirname(LEADERBOARD_FILE)
     all_jsons = glob.glob(os.path.join(folder, "*.json"))
 
-    merged = []
+    merged =load_leaderboard()
     merged_count = 0
 
     for path in all_jsons:
@@ -474,7 +484,8 @@ def merge_named_leaderboards():
         return  # Just exit the function early without saving or pushing
 
     unique.sort(key=lambda x: (-x["score"], -x["size"], -x["level"],
-                               int(-100 * x["bonus"] / x["score"]) if x["score"] > 0 else float("inf")))
+                               int(-100 * x["bonus"] / x["score"]) if x["score"] > 0 
+                               else float("inf")))
     
     top_10 = unique[:MAX_LEADERBOARD_ENTRIES]
 
@@ -496,13 +507,13 @@ def merge_named_leaderboards():
 # === UI SCREENS & PLAYER SETUP ===
 
 def initialize_game_session():
-    player_name, snake_skin, skin_index, selected_music_index, selected_voice_index, selected_speed, voice_enabled = prompt_player_name_skin_music_voice_speed()
+    player_name, snake_skin, skin_index, selected_music_index, selected_voice_index, selected_speed, voice_enabled, tournament_mode = prompt_player_name_skin_music_voice_speed()
     
     head_color = HEAD_COLORS[skin_index]
     music_folder = music_folder_paths[selected_music_index]
     voice_folder = voice_pack_paths[selected_voice_index]
 
-    game = Game(player_name, head_color, music_folder, voice_folder, selected_speed, voice_enabled)
+    game = Game(player_name, head_color, music_folder, voice_folder, selected_speed, voice_enabled,tournament_mode=tournament_mode)
     game.apply_player_name_and_skin(player_name, skin_index)
     game.speed_mode = selected_speed
     game.apply_speed_mode(selected_speed)
@@ -511,12 +522,14 @@ def initialize_game_session():
     return game, snake_skin, skin_names[skin_index]
 
 def prompt_player_name_skin_music_voice_speed():
-    center_y = SCREEN_SIZE // 16  # Base anchor point
+    # center_y = SCREEN_SIZE // 16  # Base anchor point
+    center_y = LAYOUTS.welcome_margin_bottom
     SPACING = CELL_SIZE*2
 
     welcome_y = center_y
     name_y = welcome_y + SPACING 
-    voice_y = name_y + SPACING
+    tourn_y = name_y + SPACING
+    voice_y = tourn_y + SPACING
     speed_y = voice_y + SPACING
     skin_y  = speed_y + SPACING
 
@@ -525,6 +538,7 @@ def prompt_player_name_skin_music_voice_speed():
 
     error_sound = pygame.mixer.Sound("assets/sounds/crunchybite.ogg")
     
+    tournament_mode = False
     name = ""
     cursor_visible = True
     cursor_timer = 0
@@ -550,16 +564,21 @@ def prompt_player_name_skin_music_voice_speed():
         name_surf = FONTS.title_medium.render(name_label, True, BLACK)
         name_rect = name_surf.get_rect(center=(SCREEN_SIZE // 2, name_y))
         screen.blit(name_surf, name_rect)
-        
+
+        tourn_text = f"Tournament Mode: {'On' if tournament_mode else 'Off'}"
+        tourn_surf = FONTS.title_medium.render(tourn_text, True, BLACK)
+        tourn_rect = tourn_surf.get_rect(center=(SCREEN_SIZE // 2, tourn_y))
+        screen.blit(tourn_surf, tourn_rect)
+
         # Voice Label
         if voice_selected:
             voice_text = f"Voice: {voice_pack_names[selected_voice_index].capitalize()}"
         else:
             voice_text = "Voice: None (chomp only)"
      
-        voice_label = FONTS.title_medium.render(voice_text, True, BLACK)
-        voice_rect = voice_label.get_rect(center=(SCREEN_SIZE // 2, voice_y))
-        screen.blit(voice_label, voice_rect)
+        voice_surf = FONTS.title_medium.render(voice_text, True, BLACK)
+        voice_rect = voice_surf.get_rect(center=(SCREEN_SIZE // 2, voice_y))
+        screen.blit(voice_surf, voice_rect)
         
         # Speed Label
         speed_label_surf = FONTS.title_medium.render(f"Speed: {selected_speed}", True, BLACK)
@@ -624,13 +643,17 @@ def prompt_player_name_skin_music_voice_speed():
                 sys.exit()
 
             elif event.type == pygame.KEYDOWN:
+
                 if event.key == pygame.K_RETURN and name:
                     pygame.mixer.music.fadeout(250)
                     snake_skin = load_image(skin_files[skin_index], 
                                             size=(CELL_SIZE, CELL_SIZE), 
                                             use_alpha=True)
                     voice_enabled = voice_selected
-                    return name, snake_skin, skin_index, selected_music_index, selected_voice_index, selected_speed, voice_enabled
+                    return name, snake_skin, skin_index, selected_music_index, selected_voice_index, selected_speed, voice_enabled, tournament_mode
+                
+                elif event.key == pygame.K_F1:
+                    tournament_mode = not tournament_mode
 
                 elif event.key == pygame.K_BACKSPACE:
                     name = name[:-1]
@@ -865,12 +888,13 @@ class Game:
     
     FADE_FRAMES = 15  # Number of frames for level transition fade effect
     
-    def __init__(self, player_name, head_color, music_folder, voice_folder, speed_mode, voice_enabled):
+    def __init__(self, player_name, head_color, music_folder, voice_folder, speed_mode, voice_enabled, tournament_mode=False):
         # Basic identity
         self.player_name = player_name
         self.head_color = head_color
         self.speed_mode = speed_mode
         self.voice_enabled = voice_enabled
+        self.tournament_mode = tournament_mode
         self.mouse_bonus_unlock_ms = None
 
         # Visuals
@@ -1169,11 +1193,25 @@ class Game:
         if self.score > 0:
             entry_timestamp = update_leaderboard(
                 self.player_name, self.score, len(self.snake.body),
-                self.level, self.bonus_points_total, self.game_duration())
+                self.level, self.bonus_points_total, self.game_duration(),
+                self.tournament_mode
+                )
             self.highlight_entry_ts = entry_timestamp
-            if entry_timestamp:
-                git_push_leaderboard()
-        
+            
+            # if self.tournament_mode and entry_timestamp:
+            #     save_personal_leaderboard(
+            #         self.player_name,
+            #         load_active_leaderboard(self.player_name, tournament_mode=True)
+            #     )
+
+            if self.tournament_mode and entry_timestamp:
+                save_active_leaderboard(
+                    self.player_name,
+                    load_active_leaderboard(self.player_name, tournament_mode=True),
+                    tournament_mode=True
+    )
+
+
         pygame.mixer.music.fadeout(500)  # ⬅️ Stop music immediately
         print("Game Over - resetting everything")
         self.show_leaderboard = True
@@ -1394,10 +1432,7 @@ class Game:
                                                        HEADER_MARGIN_TOP))
             screen.blit(header_surf, header_rect)
 
-        # Draw Leaderboard Entries
-        leaderboard = load_leaderboard()
-
-        # Find starting y so entries are centered between HEADER_MARGIN_TOP and screen bottom
+        leaderboard = load_active_leaderboard(self.player_name, self.tournament_mode)
         entries_start_y = ENTRY_MARGIN_TOP
 
         for idx, entry in enumerate(leaderboard):
@@ -1655,8 +1690,12 @@ def main():
 
                     elif event.key == pygame.K_n:
                         # Get player inputs from welcome screen
-                        player_name, snake_skin, skin_index, selected_music_index, selected_voice_index, selected_speed, voice_enabled = prompt_player_name_skin_music_voice_speed()
+                        player_name, snake_skin, skin_index, selected_music_index, selected_voice_index, selected_speed, voice_enabled, tournament_mode = prompt_player_name_skin_music_voice_speed()
                         
+                        game.tournament_mode = tournament_mode
+                        game.player_name = player_name
+                        game.show_leaderboard = True
+
                         # Apply skin and player name
                         game.apply_player_name_and_skin(player_name, skin_index)
                         chosen_skin_name = skin_names[skin_index]
