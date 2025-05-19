@@ -96,6 +96,7 @@ git push
 
 ```bash
 git add -A && git commit -m "Fix bug with food spawn" && git push
+git add -A && git commit -m "Update leaderboard" && git push
 ```
 
 ---
