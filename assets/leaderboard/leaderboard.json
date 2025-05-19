@@ -30,6 +30,16 @@
         "duration": "1:20"
     },
     {
+        "name": "Dougie",
+        "score": 42,
+        "size": 17,
+        "date": "05/19/25",
+        "level": 4,
+        "bonus": 11,
+        "ts": 1747682199.219588,
+        "duration": "4:32"
+    },
+    {
         "name": "zzz",
         "score": 32,
         "size": 13,
@@ -88,15 +98,5 @@
         "bonus": 2,
         "ts": 1747674420.320699,
         "duration": "0:22"
-    },
-    {
-        "name": "Ben",
-        "score": 8,
-        "size": 6,
-        "date": "05/19/25",
-        "level": 2,
-        "bonus": 2,
-        "ts": 1747678820.664203,
-        "duration": "0:38"
     }
 ]
