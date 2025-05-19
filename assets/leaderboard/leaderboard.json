@@ -30,6 +30,16 @@
         "duration": "1:20"
     },
     {
+        "name": "Ghost",
+        "score": 47,
+        "size": 22,
+        "date": "05/19/25",
+        "level": 3,
+        "bonus": 4,
+        "ts": 1747683799.361036,
+        "duration": "6:27"
+    },
+    {
         "name": "Dougie",
         "score": 42,
         "size": 17,
@@ -88,15 +98,5 @@
         "bonus": 5,
         "ts": 1747678753.227578,
         "duration": "0:17"
-    },
-    {
-        "name": "A",
-        "score": 10,
-        "size": 50,
-        "date": "05/13/25",
-        "level": 11,
-        "bonus": 78,
-        "ts": 1747197667.541949,
-        "duration": "3:39"
     }
 ]
