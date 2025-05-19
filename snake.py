@@ -79,18 +79,14 @@ class Font:
 
 FONTS = Font(SCREEN_SIZE)
 
-class Layout:
+class Layout: # for future cleanup, keywords spacing, margin, layout, screen_size, _y, _x, cell_size
         def __init__(self, screen_size):
             self.center_x = screen_size // 2 # refactor "SCREEN_SIZE // 2" to LAYOUTS.center_x
             self.welcome_margin_bottom = screen_size // 16
 
-# keyword(s) for layout consolidation if using class Layout: 
-# spacing, margin, layout, screen_size, _y, _x, cell_size
-
 LAYOUTS = Layout(SCREEN_SIZE)
 
 # Leaderboard
-# TOURNAMENT_MODE = True  # Set this via UI toggle at start screen
 LEADERBOARD_FILE = "assets/leaderboard/leaderboard.json"
 MAX_LEADERBOARD_ENTRIES = 10
 
@@ -244,10 +240,9 @@ HEAD_COLORS = [
     (112, 101, 52),  # Corroscale
 ]
 
-# FYI: This uses os.path and glob for now.
-# For cleaner path handling later, consider switching to pathlib (Python 3.4+).
 
 # === BACKGROUND IMAGE LOADING ===
+# For cleaner path handling later, consider switching from os.path and glob to pathlib.
 
 # Supported extensions (case-insensitive)
 supported_exts = ["png", "PNG", "jpg", "JPG", "jpeg", "JPEG"]
@@ -286,13 +281,6 @@ all_food_paths = glob.glob("assets/food/food64/*.png")
 # Sort them alphabetically by filename
 valid_food_paths = sorted(all_food_paths, key=lambda p: os.path.basename(p).lower())
 
-# # legacy code: fruit PNG in assets/food
-# # Filter only valid files and sort by number
-# valid_food_paths = sorted(
-#     [path for path in all_food_paths if extract_fruit_index(path) is not None],
-#     key=extract_fruit_index
-# )
-
 # Load each image
 food_images = [
     load_image(path, size=(CELL_SIZE, CELL_SIZE), use_alpha=True)
@@ -311,6 +299,33 @@ def get_leaderboard_path(player_name=None, tournament_mode=False):
         return os.path.join("assets", "leaderboard", f"{safe_name}.json")
     return LEADERBOARD_FILE
     
+def save_active_leaderboard(player_name, leaderboard, tournament_mode=False):
+    """Safely save the leaderboard (global or named) using a temporary file and atomic replace."""
+    path = get_leaderboard_path(player_name, tournament_mode)
+    print(f"Path: {path}")
+    temp_path = None
+    
+    try:
+        # fallback in case path is just a filename
+        dir_name = os.path.dirname(path) or "."
+        print(f"Directory: {dir_name}")
+
+        # write to temp file first
+        with tempfile.NamedTemporaryFile("w", delete=False, dir=dir_name) as temp_file:
+            json.dump(leaderboard, temp_file, indent=4)
+            temp_path = temp_file.name
+            print(f"Temp path: {temp_path}")
+        
+        # atomically replace original
+        shutil.move(temp_path, path)
+        print(f"✅ Saved leaderboard to {path}")
+
+    except Exception as e:
+        print(f"[ERROR] Failed to save leaderboard to {path}: {e}")
+        
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
+
 def load_active_leaderboard(player_name=None, tournament_mode=False):
     path = get_leaderboard_path(player_name, tournament_mode)
     print(path)
@@ -318,15 +333,6 @@ def load_active_leaderboard(player_name=None, tournament_mode=False):
         with open(path, "r") as f:
             return json.load(f)
     return []
-
-def save_active_leaderboard(player_name, leaderboard, tournament_mode=False):
-    path = get_leaderboard_path(player_name, tournament_mode)
-    try:
-        with open(path, "w") as f:
-            json.dump(leaderboard, f, indent=4)
-        print(f"✅ Saved leaderboard to {path}")
-    except Exception as e:
-        print(f"[ERROR] Failed to save leaderboard: {e}")
 
 def git_pull_leaderboard():
     if os.path.isdir(".git"):
@@ -349,57 +355,6 @@ def git_push_leaderboard():
             print(f"❌ Git push failed: {e}")
     else:
         print("Git push skipped (not a Git repo)")
-
-# def save_personal_leaderboard(player_name, leaderboard):
-#     """Save the current leaderboard to a personal file named after the player."""
-#     if not player_name:
-#         print("[ERROR] Player name not set; cannot save leaderboard.")
-#         return
-
-#     safe_name = player_name.lower().replace(" ", "_")
-#     path = os.path.join("assets", "leaderboard", f"{safe_name}.json")
-
-#     try:
-#         with open(path, "w") as f:
-#             json.dump(leaderboard, f, indent=4)
-#         print(f"✅ Saved personal leaderboard → {path}")
-#     except Exception as e:
-#         print(f"[ERROR] Failed to save personal leaderboard: {e}")
-
-def load_leaderboard():
-    if not os.path.exists(LEADERBOARD_FILE):
-        return []
-    try:
-        with open(LEADERBOARD_FILE, "r") as file:
-            data = json.load(file)
-            if isinstance(data, list):
-                return data
-            else:
-                print("⚠️ Leaderboard file is not a list. Ignoring.")
-                return []
-    except (json.JSONDecodeError, OSError) as e:
-        print(f"⚠️ Failed to load leaderboard: {e}")
-        return []
-
-def save_leaderboard(leaderboard):
-    """Safely save the leaderboard to a JSON file using a temporary file and atomic replace."""
-    temp_path = None
-    try:
-        # extract directory path of LEADERBOARD_FILE (if just filename default to current directory)
-        dir_name = os.path.dirname(LEADERBOARD_FILE) or "."
-
-        # create temp file in that same folder (real leaderboard.json untouched)
-        with tempfile.NamedTemporaryFile("w", delete=False, dir=dir_name) as temp_file:
-            json.dump(leaderboard, temp_file, indent=4)
-            temp_path = temp_file.name
-        
-        # Replace real leaderboard.json only after temp write
-        shutil.move(temp_path, LEADERBOARD_FILE)
-
-    except Exception as e:
-        print(f"❌ Error saving leaderboard: {e}")
-        if temp_path and os.path.exists(temp_path):
-            os.remove(temp_path)
 
 def update_leaderboard(player_name, score, snake_length, level, bonus_points, duration=None, tournament_mode=False):
     """
@@ -442,12 +397,27 @@ def update_leaderboard(player_name, score, snake_length, level, bonus_points, du
 
     return timestamp if any(entry.get("ts") == timestamp for entry in leaderboard) else None
 
+def load_global_leaderboard():
+    if not os.path.exists(LEADERBOARD_FILE):
+        return []
+    try:
+        with open(LEADERBOARD_FILE, "r") as file:
+            data = json.load(file)
+            if isinstance(data, list):
+                return data
+            else:
+                print("⚠️ Leaderboard file is not a list. Ignoring.")
+                return []
+    except (json.JSONDecodeError, OSError) as e:
+        print(f"⚠️ Failed to load leaderboard: {e}")
+        return []
+    
 def merge_named_leaderboards():
     """Merge all named test leaderboards in the high-level testing directory."""
     folder = os.path.dirname(LEADERBOARD_FILE)
     all_jsons = glob.glob(os.path.join(folder, "*.json"))
 
-    merged =load_leaderboard()
+    merged =load_global_leaderboard()
     merged_count = 0
 
     for path in all_jsons:
@@ -1198,20 +1168,13 @@ class Game:
                 )
             self.highlight_entry_ts = entry_timestamp
             
-            # if self.tournament_mode and entry_timestamp:
-            #     save_personal_leaderboard(
-            #         self.player_name,
-            #         load_active_leaderboard(self.player_name, tournament_mode=True)
-            #     )
-
             if self.tournament_mode and entry_timestamp:
                 save_active_leaderboard(
                     self.player_name,
                     load_active_leaderboard(self.player_name, tournament_mode=True),
                     tournament_mode=True
-    )
-
-
+                    )
+        
         pygame.mixer.music.fadeout(500)  # ⬅️ Stop music immediately
         print("Game Over - resetting everything")
         self.show_leaderboard = True
