@@ -302,19 +302,14 @@ def get_leaderboard_path(player_name=None, tournament_mode=False):
 def save_active_leaderboard(player_name, leaderboard, tournament_mode=False):
     """Safely save the leaderboard (global or named) using a temporary file and atomic replace."""
     path = get_leaderboard_path(player_name, tournament_mode)
-    print(f"Path: {path}")
     temp_path = None
-    
     try:
         # fallback in case path is just a filename
         dir_name = os.path.dirname(path) or "."
-        print(f"Directory: {dir_name}")
-
         # write to temp file first
         with tempfile.NamedTemporaryFile("w", delete=False, dir=dir_name) as temp_file:
             json.dump(leaderboard, temp_file, indent=4)
             temp_path = temp_file.name
-            print(f"Temp path: {temp_path}")
         
         # atomically replace original
         shutil.move(temp_path, path)
