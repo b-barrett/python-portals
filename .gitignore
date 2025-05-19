@@ -5,4 +5,5 @@ __pycache__/    # Python's temp bytecode cache folders
 *.save          # Ignore future save files (if you add game state persistence)
 .DS_Store       # macOS file metadata (clutters up repos)
 /testing/       # Assorted test scripts including merging leaderboard
+/testing/**     # All contents inside recursively
 
