@@ -1,37 +1,6 @@
 # Python Portals
 
-**A fast-paced, feature-rich Snake game written in Python using Pygame**
-
----
-
-## 🎮 How to Play
-
-* Use arrow keys to move your snake
-* Eat food to grow and score points
-* 4 foods per level unlocks a portal
-* Enter portals to advance to the next level
-* Snake speed increases each level
-* Food value increases each level
-* Click blue squares for bonus points
-* Press `P` to pause anytime
-* Game ends when:
-
-  * Snake hits the wall
-  * Snake runs into its own tail
-* Reach the final portal to win the game!
-
----
-
-## 🚀 Getting Started
-
-### Option 1: Local Play (No Git, no sync)
-
-#### ✅ Requirements
-
-* Python 3.10 or 3.11 (Python 3.12 works too, but slightly newer)
-* Pygame 2.6.1+
-
-#### 🎯 Pip Users
+#### Pip Users
 
 ```bash
 # Set up virtual environment (one-time)
@@ -45,7 +14,7 @@ pip install -r requirements.txt
 python snake.py
 ```
 
-#### 🎯 Conda Users
+#### Conda Users
 
 ```bash
 # Create and activate conda env
@@ -59,31 +28,7 @@ pip install -r requirements.txt
 python snake.py
 ```
 
----
-
-## 🧰 Setup (Developers Only)
-
-### ✅ 1. Clone the Repo
-
-```bash
-git clone https://github.com/YOUR_USERNAME/python-portals.git
-cd python-portals
-```
-
-### 🔁 2. Leaderboard Sync
-
-If you're inside a cloned Git repo, the game will:
-
-* Pull the latest `leaderboard.json` at game start
-* Push your updated score at game end
-
-If you're running the zipped version or have no `.git` folder:
-
-* Scores will save *locally* only
-
----
-
-## 🗃️ Project Structure
+### Project Structure
 
 ```
 python-portals/
@@ -91,14 +36,16 @@ python-portals/
 │   ├── backgrounds/
 │   ├── fonts/
 │   ├── food/
-│   ├── leaderboard/
+│   ├── leaderboard/leaderboard.json, player1.json, player2.json, ...
 │   ├── music/
 │   ├── portals/
 │   ├── snakeskins/
 │   └── sounds/
+│   └── sprite-sheets/
+├── convertorAndExtractorScripts/
+├── README.md
 ├── requirements.txt
 ├── snake.py
-├── README.md
 └── .gitignore
 ```
 
