@@ -6,7 +6,7 @@ __pycache__/    # Python's temp bytecode cache folders
 .DS_Store       # macOS file metadata (clutters up repos)
 /testing/       # Assorted test scripts including merging leaderboard
 /testing/**     # All contents inside recursively
-assets/leaderboard/*.json # Ignore ALL JSON files
+assets/leaderboard/**/*.json # Ignore ALL JSON files
 !assets/leaderboard/leaderboard.json # ...EXCEPT this one
 
 
