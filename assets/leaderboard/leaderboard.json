@@ -50,6 +50,16 @@
         "duration": "4:32"
     },
     {
+        "name": "Squatch",
+        "score": 39,
+        "size": 15,
+        "date": "05/19/25",
+        "level": 3,
+        "bonus": 13,
+        "ts": 1747683820.852995,
+        "duration": "7:58"
+    },
+    {
         "name": "Yesssss",
         "score": 37,
         "size": 14,
@@ -88,15 +98,5 @@
         "bonus": 7,
         "ts": 1747682195.53324,
         "duration": "1:00"
-    },
-    {
-        "name": "Ben",
-        "score": 11,
-        "size": 6,
-        "date": "05/19/25",
-        "level": 2,
-        "bonus": 5,
-        "ts": 1747678753.227578,
-        "duration": "0:17"
     }
 ]
