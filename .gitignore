@@ -8,6 +8,6 @@ __pycache__/    # Python's temp bytecode cache folders
 /testing/**     # All contents inside recursively
 
 assets/leaderboard/*.json
-!assets/leaderboard/leaderboard.json # ...EXCEPT this one
+!assets/leaderboard/leaderboard.json
 
 
