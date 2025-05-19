@@ -40,6 +40,16 @@
         "duration": "1:00"
     },
     {
+        "name": "Annie",
+        "score": 20,
+        "size": 10,
+        "date": "05/19/25",
+        "level": 2,
+        "bonus": 7,
+        "ts": 1747682195.53324,
+        "duration": "1:00"
+    },
+    {
         "name": "Ben",
         "score": 11,
         "size": 6,
@@ -88,15 +98,5 @@
         "bonus": 2,
         "ts": 1747674420.320699,
         "duration": "0:22"
-    },
-    {
-        "name": "Ben",
-        "score": 8,
-        "size": 6,
-        "date": "05/19/25",
-        "level": 2,
-        "bonus": 2,
-        "ts": 1747678820.664203,
-        "duration": "0:38"
     }
 ]
