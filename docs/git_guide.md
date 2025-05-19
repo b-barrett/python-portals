@@ -413,6 +413,17 @@ git commit -m "Add Thomas's leaderboard"
 git push origin main
 ```
 
+## Name Leaderboard Testing Commonly Used Commanda
+
+```bash
+find assets/leaderboard -maxdepth 1 -type f -name "*.json" ! -name "leaderboard.json"
+```
+
+```bash
+find assets/leaderboard -maxdepth 1 -type f -name "*.json" ! -name "leaderboard.json" -exec rm {} +
+```
+
+
 ## Each dev repeats this with their own name:
 
 * elisa.json
