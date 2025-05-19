@@ -1028,7 +1028,7 @@ class Game:
 
             random_roll_for_bonus = random.random()
             print(f"[DEBUG] Random roll for bonus: {random_roll_for_bonus:.3f}")
-            if random_roll_for_bonus <= 1/3:  # 33% bonus box spawn probability
+            if random_roll_for_bonus <= 0.25:  #25% bonus box spawn probability
                 print("[DEBUG] Bonus will spawn.")
                 self.spawn_bonus()
             else:
