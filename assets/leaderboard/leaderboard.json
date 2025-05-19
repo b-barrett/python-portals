@@ -80,6 +80,16 @@
         "duration": "1:07"
     },
     {
+        "name": "Sep",
+        "score": 36,
+        "size": 14,
+        "date": "05/19/25",
+        "level": 3,
+        "bonus": 11,
+        "ts": 1747692474.499307,
+        "duration": "1:02"
+    },
+    {
         "name": "zzz",
         "score": 32,
         "size": 13,
@@ -88,15 +98,5 @@
         "bonus": 9,
         "ts": 1747675114.44135,
         "duration": "1:00"
-    },
-    {
-        "name": "Apr",
-        "score": 26,
-        "size": 11,
-        "date": "05/19/25",
-        "level": 3,
-        "bonus": 11,
-        "ts": 1747692390.143355,
-        "duration": "0:49"
     }
 ]
