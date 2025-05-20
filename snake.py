@@ -61,6 +61,7 @@ RESTORE_VOLUME_AFTER_FOOD_SOUND = pygame.USEREVENT + 1
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
+RED = (136, 8, 8)
 GAME_NAME = "Python Portals"
 
 MY_FONT = "assets/fonts/VT323-Regular.ttf"
@@ -722,6 +723,56 @@ def show_instructions_screen(game):
 # endregion
 
 
+# region class helper functions
+# === CLASS HELPER FUNCTIONS ===
+
+def generate_enemy_snake_offscreen(side, length):
+    """
+    Generate an enemy snake off-screen on the given side, facing inward.
+    
+    Args:
+        side (str): One of "left", "right", "top", "bottom"
+        length (int): Total number of segments to generate (same as player snake)
+    
+    Returns:
+        List[Vector2]: Full body of the enemy snake, starting just off-screen
+
+    """
+    direction_map = {
+        "left": Vector2(1, 0),
+        "right": Vector2(-1, 0),
+        "top": Vector2(0, 1),
+        "bottom": Vector2(0, -1),
+    }
+
+    direction = direction_map[side]
+
+    if side in ("left", "right"):
+        y = random.randint(0, NUM_CELLS - 1)
+        x = -1 if side == "left" else NUM_CELLS
+        head = Vector2(x, y)
+    else:
+        x = random.randint(0, NUM_CELLS - 1)
+        y = -1 if side == "top" else NUM_CELLS
+        head = Vector2(x, y)
+
+    body = [head + (-i * direction) for i in range(length)]
+
+    # Debug output
+    print(f"Enemy Snake Spawn Side: {side}")
+    print(f"Direction: {direction}")
+    print(f"Head Position (offscreen): {head}")
+    print(f"Full Body Segments: {[tuple(seg) for seg in body]}")
+
+    return body, direction
+
+def print_debug_enemy(msg):
+    # if DEBUG_ENEMY:  # set to False for production
+        print(f"[EnemySnake] {msg}")
+
+# endregion
+
+
 # region CLASSES
 # === CLASSES ===
 
@@ -734,12 +785,7 @@ class Snake:
         center = NUM_CELLS // 2
         self.body = [Vector2(center, center)]
         self.direction = Vector2(1, 0)
-
-        # Copy the vector values of self.direction,
-        # but store them in a separate Vector2 object.
-        # Changing self.direction later will not affect self.last_direction.
-        # Prevents snake from instantly reversing direction and crashing into itself
-        # See docsdirection_vs_last_direction.md for full explanation.
+        # See docs "direction_vs_last_direction.md" for full explanation.
         self.last_direction = Vector2(self.direction.x, self.direction.y) 
         self.grow = False
 
@@ -756,28 +802,6 @@ class Snake:
         self.last_direction = self.direction 
 
     def draw(self):
-        """
-        Draws the snake on the game screen with a distinct head and body segments.
-        The snake's head is drawn with a different color and includes animated eyes that follow
-        the snake's direction. The body segments use a predefined body image texture.
-        The drawing process includes:
-        1. Converting grid coordinates to pixel coordinates
-        2. Drawing the head with a special color
-        3. Drawing body segments using the body image
-        4. Adding eyes to the head:
-            - White circles for the eye whites
-            - Black pupils that move based on the snake's direction
-        Note:
-             - Coordinates are adjusted for HUD height
-             - Eyes are positioned using EYE_OFFSET from cell edges
-             - Pupils move based on PUPIL_OFFSET and current direction
-        Dependencies:
-             - pygame for drawing primitives
-             - Global constants: CELL_SIZE, HUD_HEIGHT, EYE_OFFSET, EYE_RADIUS,
-                PUPIL_OFFSET, PUPIL_RADIUS, WHITE, BLACK
-        Returns:
-             None
-        """
         # loop through all cell coordinates in snake's body and convert to pixel coordinates
         # iow, px and py convert grid coordinates to pixel coordinates
         for index, segment in enumerate(self.body):
@@ -848,6 +872,62 @@ class Food:
         py = self.position.y * CELL_SIZE + HUD_HEIGHT
         screen.blit(self.image, (px, py))
 
+
+class EnemySnake:
+    def __init__(self, body, direction, head_color=(255, 255, 255), body_color=(0, 0, 0)):
+        self.body = body  # list of Vector2
+        self.direction = direction
+        self.head_color = head_color
+        self.body_color = body_color
+        
+        # Computes initial direction by comparing head and second segment
+        # Example: if head is (-1, 14) and next is (-2, 14), then direction is (1, 0)
+        if len(body) >= 2:
+            self.direction = (body[0] - body[1]).normalize() # Normalize to unit vector (eg Vector2(1, 0)
+        else:
+            # Random initial direction (no movement into wall guaranteed yet)
+            self.direction = random.choice(
+                [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]
+                )
+
+    def move(self):
+        head = self.body[0] + self.direction
+        self.body = [head] + self.body[:-1]
+
+    def _will_stay_on_screen(self, x, y, direction):
+        next_x = x + int(direction.x)
+        next_y = y + int(direction.y)
+        return 0 <= next_x < NUM_CELLS and 0 <= next_y < NUM_CELLS
+
+    def choose_new_direction_if_necessary(self):
+        head = self.body[0]
+        possible_dirs = [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]
+        random.shuffle(possible_dirs)
+
+        for dir in possible_dirs:
+            # no 180 degree turns (dir != -self.direction)
+            if dir != -self.direction and self._will_stay_on_screen(head.x, head.y, dir):
+                self.direction = dir
+                return  # first safe choice wins
+
+    def update(self, target_length):
+        self.choose_new_direction_if_necessary()
+        self.move()
+
+        # Match player length by extending the tail
+        while len(self.body) < target_length:
+            self.body.append(self.body[-1])  # Duplicate last segment to extend
+
+    def draw(self, surface):
+        for i, segment in enumerate(self.body):
+            color = (255, 255, 255) if i == 0 else (0, 0, 0)  # white head, black body
+            px = segment.x * CELL_SIZE
+            py = segment.y * CELL_SIZE + HUD_HEIGHT
+            rect = pygame.Rect(px, py, CELL_SIZE, CELL_SIZE)
+            pygame.draw.rect(surface, color, rect)
+            print_debug_enemy(f"Drawing {len(self.body)} segments at {[tuple(s) for s in self.body]}")
+
+
 class Game:
     """Main game class that manages game state, updates, and rendering."""
     
@@ -861,6 +941,10 @@ class Game:
         self.voice_enabled = voice_enabled
         self.tournament_mode = tournament_mode
         self.mouse_bonus_unlock_ms = None
+
+        #Enemy Snake
+        self.enemy_snake = None  # will hold an EnemySnake instance or None
+        self.debug_enemy_snake = True  # Toggle this off to disable enemy logic
 
         # Visuals
         self.background_index = random.randint(0, len(backgrounds) - 1)
@@ -902,6 +986,9 @@ class Game:
 
     def reset_game_state(self):
         """Reset the game to its initial state used on first load and after game over."""
+
+        #Enemy snake
+        self.enemy_snake = None
 
         # Game progress
         self.start_time = pygame.time.get_ticks()
@@ -1014,6 +1101,24 @@ class Game:
         self.check_collisions_and_portals()
         self.check_tail()
 
+        # === ENEMY SNAKE UPDATE ===
+        if self.debug_enemy_snake and self.enemy_snake:
+            self.enemy_snake.update(len(self.snake.body))
+            self.check_player_enemy_collision()
+
+        # Respawn logic: every 5s, 1 in 3 chance
+        if self.debug_enemy_snake and not self.enemy_snake:
+            current_time = pygame.time.get_ticks()
+            if current_time - getattr(self, "last_enemy_despawn_time", 0) >= 5000:
+                self.last_enemy_despawn_time = current_time
+                print(current_time)
+                if random.random() <= 1/3:
+                    spawn_side = random.choice(["left", "right", "top", "bottom"])
+                    length = len(self.snake.body)
+                    enemy_body, direction = generate_enemy_snake_offscreen(spawn_side, length)
+                    self.enemy_snake = EnemySnake(enemy_body, direction)
+                    print_debug_enemy(f"Spawned from {spawn_side} with length {len(enemy_body)}")
+
         current_time = pygame.time.get_ticks()
         time_since_last_bonus = current_time - self.last_bonus_spawn_time
 
@@ -1091,12 +1196,32 @@ class Game:
                 self.generate_random_portal()
 
     def check_collisions_and_portals(self):
-        """Check if the snake has hit walls or entered a portal."""
         head = self.snake.body[0]
 
         # debug
         if not head.x.is_integer() or not head.y.is_integer():
             print(f"[ERROR] Non-integer snake head detected: {head}")
+
+        # if self.debug_enemy_snake and self.enemy_snake:
+        #     for segment in self.snake.body:
+        #         if segment in self.enemy_snake.body:
+        #             self.score -= self.level
+        #             self.enemy_snake = None  # Remove enemy snake from play
+                
+        #         px = segment.x * CELL_SIZE
+        #         py = segment.y * CELL_SIZE + HUD_HEIGHT
+        #         popup_screen_pos = (px + CELL_SIZE // 2, py + CELL_SIZE // 2)
+                
+        #         self.bonus_popup = {
+        #             "text": f"-{self.level}",
+        #             "color": RED,
+        #             "position": popup_screen_pos,
+        #             "timer": 60
+        #             }
+                
+        #         self.bonus_sound.play()
+        #         print_debug_enemy(f"Collision! Player penalized {self.level} points.")
+        #         break
 
         if self.portal_open and head == self.portal_position:
             self.portal_sound.play()
@@ -1129,6 +1254,24 @@ class Game:
             if self.portal_open:
                 print(f"[DEBUG] Portal open at: {self.portal_position}")
             self.game_over()
+
+    def check_player_enemy_collision(self):
+        if self.debug_enemy_snake and self.enemy_snake:
+            for segment in self.snake.body:
+                if segment in self.enemy_snake.body:
+                    self.score -= self.level
+                    self.enemy_snake = None
+                    popup_pos = (segment.x * CELL_SIZE + CELL_SIZE // 2,
+                                segment.y * CELL_SIZE + HUD_HEIGHT + CELL_SIZE // 2)
+                    self.bonus_popup = {
+                        "text": f"-{self.level}",
+                        "color": RED,
+                        "position": popup_pos,
+                        "timer": 60
+                    }
+                    # self.penalty_sound.play()
+                    print_debug_enemy(f"Collision! Player penalized {self.level} points.")
+                    break
 
     def check_tail(self):
         """Check if the snake has collided with itself."""
@@ -1208,6 +1351,9 @@ class Game:
         # Draw game elements on top — full brightness
         self.snake.draw()
         self.food.draw()
+
+        if self.debug_enemy_snake and self.enemy_snake:
+            self.enemy_snake.draw(screen)
 
         if self.transitioning:
             message = FONTS.title_large.render(f"LEVEL {self.level}", True, WHITE)
@@ -1305,7 +1451,8 @@ class Game:
 
         if self.bonus_popup:
             if not self.paused: 
-                popup_text = FONTS.label.render(self.bonus_popup["text"], True, WHITE)
+                color = self.bonus_popup.get("color", WHITE)  # Default to WHITE if no color specified
+                popup_text = FONTS.label.render(self.bonus_popup["text"], True, color)
                 popup_rect = popup_text.get_rect(center=self.bonus_popup["position"])
                 screen.blit(popup_text, popup_rect)
 
@@ -1541,13 +1688,18 @@ class Game:
         self.snake.body = [starting_pos]
         portal_side = getattr(self, "last_portal_side", "N/A")
         print(f"[DEBUG] Snake spawned at {starting_pos} facing {direction} (opposite '{portal_side}' wall).")
+        # === new: snake starts from side opposite portal that it entered on transition from previous level ===
 
-        # Build out the snake's body segments
+        # Build out the snake and enemysnake in lock step ie enemy snake length matched snake length
         for i in range(1, snake_length):
             segment_pos = starting_pos - direction * i
             self.snake.body.append(segment_pos)
-        
-        # === new: snake starts from side opposite portal that it entered on transition from previous level ===
+
+        if self.debug_enemy_snake:
+            spawn_side = random.choice(["left", "right", "top", "bottom"])
+            enemy_body, direction = generate_enemy_snake_offscreen(spawn_side, len(self.snake.body))
+            self.enemy_snake = EnemySnake(enemy_body, direction)
+            print_debug_enemy(f"Spawned from {spawn_side} with length {len(enemy_body)}")
 
         self.food_name, self.food_image = self.current_food()
         self.food = Food(self.snake.body, self.food_image)
