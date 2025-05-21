@@ -802,6 +802,35 @@ def draw_eyes(surface, head_x, head_y, direction):
     pygame.draw.circle(surface, BLACK, left_eye_center, PUPIL_RADIUS)
     pygame.draw.circle(surface, BLACK, right_eye_center, PUPIL_RADIUS)
 
+def draw_crown_base(surface, px, py, vertical_align="center"):
+    """
+    Draw just the crown base rectangle (no spikes).
+    - `px`, `py` is top-left coordinate of the snake head.
+    - `vertical_align`: 'top', 'bottom', or 'center' of the head.
+    """
+    base_width_factor = 1.0 # Multiplier of CELL_SIZE
+    base_height = int(CELL_SIZE * 1/5) # Vertical height of crown base (in pixels)
+    crown_width = int(CELL_SIZE * base_width_factor)
+    
+    # centers crowns on head: if crown_width == CELL_SIZE, then crown_left_x = px
+    crown_left_x = px - (crown_width - CELL_SIZE) // 2
+
+    # Compute crown base vertical position
+    if vertical_align == "top":
+        base_top = py  # flush with top of head
+        base_bottom = base_top + base_height
+    elif vertical_align == "bottom":
+        base_bottom = py + CELL_SIZE  # flush with bottom of head
+        base_top = base_bottom - base_height
+    else:
+        raise ValueError("vertical_align must be 'top' or 'bottom'")
+
+    base_rect = pygame.Rect(
+        crown_left_x, base_top,
+        crown_width, base_height
+    )
+    pygame.draw.rect(surface, GOLD, base_rect)
+
 def draw_crown(surface, px, py):
     """Draw a gold crown above the snake's head at pixel coords (px, py)."""
     # === CONFIGURABLE VALUES ===
@@ -1086,6 +1115,10 @@ class EnemySnake:
                 draw_eyes(surface, px, py, self.direction)
                 if self.facing_horizontally:
                     draw_crown(surface, px, py)
+                elif self.direction == Vector2(0, 1):
+                    draw_crown_base(surface, px, py, vertical_align="top")
+                elif self.direction == Vector2(0, -1):
+                    draw_crown_base(surface, px, py, vertical_align="bottom")
 
             else:
                 surface.blit(self.body_color, (px, py))
@@ -1595,10 +1628,6 @@ class Game:
             pause_height = pause_text.get_height()
             instruct_height = instruct_text.get_height()
             total_height = pause_height + instruct_height
-
-            # print(pause_height)
-            # print(instruct_height)
-            # print(total_height)
             
             # Top of the two-line block
             block_top = center_y - (total_height // 2)
