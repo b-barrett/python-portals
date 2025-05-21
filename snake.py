@@ -727,6 +727,7 @@ def show_instructions_screen(game):
     howto_lines = [
         "Use arrow keys to move your snake.",
         "Eat food to grow and score points.",
+        "Avoid any contact with enemy snake.",
         "Eat four foods for portal.",
         "Enter portal to advance to next level.",
         "Snake speed increases each level.",
@@ -770,34 +771,36 @@ def show_instructions_screen(game):
 # region class helper functions
 # === CLASS HELPER FUNCTIONS ===
 
-def draw_eyes(surface, base_x, base_y, direction):
+def draw_eyes(surface, head_x, head_y, direction):
+    """
+    Draws two eyes and their pupils on a snake head at pixel coords (head_x, head_y).
+    direction is a Vector2 indicating movement.
+    """
 
-    # left eye is offset from left edge of cell
-    eye1_center = (
-        int(base_x + EYE_OFFSET),
-        int(base_y + EYE_OFFSET)
+    left_eye_center = (
+        int(head_x + EYE_OFFSET),
+        int(head_y + CELL_SIZE - EYE_OFFSET) if direction.y == 1 else int(head_y + EYE_OFFSET)
     )
 
-    # right eye is offset from right edge of cell
-    eye2_center = (
-        int(base_x + CELL_SIZE - EYE_OFFSET),
-        int(base_y + EYE_OFFSET)
+    right_eye_center = (
+        int(head_x + CELL_SIZE - EYE_OFFSET),
+        int(head_y + CELL_SIZE - EYE_OFFSET) if direction.y == 1 else int(head_y + EYE_OFFSET)
     )
 
     # Draw eyes
-    pygame.draw.circle(surface, WHITE, eye1_center, EYE_RADIUS)
-    pygame.draw.circle(surface, WHITE, eye2_center, EYE_RADIUS)
+    pygame.draw.circle(surface, WHITE, left_eye_center, EYE_RADIUS)
+    pygame.draw.circle(surface, WHITE, right_eye_center, EYE_RADIUS)
 
     # Calculate pupil direction based on snake's direction
     dir_x = int(direction.x * PUPIL_OFFSET)
     dir_y = int(direction.y * PUPIL_OFFSET)
 
     # Draw pupils
-    pupil1_center = (eye1_center[0] + dir_x, eye1_center[1] + dir_y)
-    pupil2_center = (eye2_center[0] + dir_x, eye2_center[1] + dir_y)
+    left_eye_center = (left_eye_center[0] + dir_x, left_eye_center[1] + dir_y)
+    right_eye_center = (right_eye_center[0] + dir_x, right_eye_center[1] + dir_y)
     
-    pygame.draw.circle(surface, BLACK, pupil1_center, PUPIL_RADIUS)
-    pygame.draw.circle(surface, BLACK, pupil2_center, PUPIL_RADIUS)
+    pygame.draw.circle(surface, BLACK, left_eye_center, PUPIL_RADIUS)
+    pygame.draw.circle(surface, BLACK, right_eye_center, PUPIL_RADIUS)
 
 def draw_crown(surface, px, py):
     """Draw a gold crown above the snake's head at pixel coords (px, py)."""
@@ -966,7 +969,7 @@ class EnemySnake:
                                      size=(CELL_SIZE, CELL_SIZE), use_alpha=True)
         self.just_entered = True
         self.move_counter = 0
-        self.move_threshold = 3
+        self.move_threshold = 1
 
         print_debug("enemy", f"[INIT] EnemySnake initialized with direction: {direction}")
         
@@ -991,7 +994,10 @@ class EnemySnake:
     def _will_stay_on_screen(self, x, y, direction):
         next_x = x + int(direction.x)
         next_y = y + int(direction.y)
-        return 0 <= next_x < NUM_CELLS and 0 <= next_y < NUM_CELLS
+        margin = 1
+        return (
+            margin <= next_x < NUM_CELLS - margin and 
+            margin <= next_y < NUM_CELLS - margin)
 
     def choose_new_direction_if_necessary(self):
         head = self.body[0]
