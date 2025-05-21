@@ -62,6 +62,7 @@ RESTORE_VOLUME_AFTER_FOOD_SOUND = pygame.USEREVENT + 1
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (136, 8, 8)
+GOLD = (255, 215, 0)
 GAME_NAME = "Python Portals"
 
 MY_FONT = "assets/fonts/VT323-Regular.ttf"
@@ -574,7 +575,7 @@ def prompt_player_name_skin_music_voice_speed():
         name_rect = name_surf.get_rect(center=(SCREEN_SIZE // 2, name_y))
         screen.blit(name_surf, name_rect)
 
-        tourn_text = f"Tournament Mode: {'On' if tournament_mode else 'Off'}"
+        tourn_text = f"Personal Leaderboard: {'On' if tournament_mode else 'Off'}"
         tourn_surf = FONTS.title_medium.render(tourn_text, True, BLACK)
         tourn_rect = tourn_surf.get_rect(center=(SCREEN_SIZE // 2, tourn_y))
         screen.blit(tourn_surf, tourn_rect)
@@ -798,6 +799,38 @@ def draw_eyes(surface, base_x, base_y, direction):
     pygame.draw.circle(surface, BLACK, pupil1_center, PUPIL_RADIUS)
     pygame.draw.circle(surface, BLACK, pupil2_center, PUPIL_RADIUS)
 
+def draw_crown(surface, px, py):
+    """Draw a gold crown above the snake's head at pixel coords (px, py)."""
+    # === CONFIGURABLE VALUES ===
+    base_width_factor = 1.0   # Multiplier of CELL_SIZE
+    base_height = int(CELL_SIZE * 1/5) # Vertical height of crown base (in pixels)
+    spike_height = int(CELL_SIZE * 1/3) # From Tip to top of crown base
+    num_spikes = 3 # Number of spikes
+    crown_width = int(CELL_SIZE * base_width_factor)
+    # note: px, py is top left x, y coord of snake head
+    crown_left_x = px - (crown_width - CELL_SIZE) // 2 # centers crowns on head: if crown_width == CELL_SIZE, then crown_x = px
+    crown_base_bottom_y = py  # Aligns the bottom of the crown with the top of the snake head
+    crown_base_top = crown_base_bottom_y - base_height
+    crown_top_y = crown_base_bottom_y - spike_height # tip of each spike to top of crown base
+
+    base_rect = pygame.Rect(
+        crown_left_x, crown_base_top,
+        crown_width, base_height
+    )
+    pygame.draw.rect(surface, GOLD, base_rect)
+
+    spike_spacing = crown_width // num_spikes
+    for i in range(num_spikes):
+        left = crown_left_x + i * spike_spacing
+        right = left + spike_spacing
+        tip = ((left + right) // 2, crown_top_y)
+
+        pygame.draw.polygon(surface, GOLD, [
+            (left, crown_base_top),
+            tip,
+            (right, crown_base_top)
+        ])
+
 def generate_enemy_snake_offscreen(side, length):
     direction_map = {
         "left": Vector2(1, 0),
@@ -926,12 +959,15 @@ class EnemySnake:
     def __init__(self, body, direction, head_color=None, body_color=None):
         self.body = body  # list of Vector2
         self.direction = Vector2(direction)
+        self.facing_horizontally = self.direction.y == 0
         self._spawn_direction = Vector2(direction)  # Store original for debug
         self.head_color = head_color if head_color else HEAD_COLORS[8]
         self.body_color = body_color if body_color else load_image(skin_files[8], 
                                      size=(CELL_SIZE, CELL_SIZE), use_alpha=True)
         self.just_entered = True
-        
+        self.move_counter = 0
+        self.move_threshold = 3
+
         print_debug("enemy", f"[INIT] EnemySnake initialized with direction: {direction}")
         
         # Computes initial direction by comparing head and second segment
@@ -983,23 +1019,51 @@ class EnemySnake:
                 print_debug("enemy", f"[Direction changed from {self.direction} to {dir}")
                 self.direction = dir
                 return
+    
+    def choose_new_direction_toward_player(self, player_pos):
+        head = self.body[0]
+        dx = player_pos.x - head.x
+        dy = player_pos.y - head.y
 
-    def update(self, target_length):
+        options = []
+        if abs(dx) >= abs(dy):
+            options.append(Vector2(1, 0) if dx > 0 else Vector2(-1, 0))
+            if dy != 0:
+                options.append(Vector2(0, 1) if dy > 0 else Vector2(0, -1))
+        else:
+            options.append(Vector2(0, 1) if dy > 0 else Vector2(0, -1))
+            if dx != 0:
+                options.append(Vector2(1, 0) if dx > 0 else Vector2(-1, 0))
+
+        for dir in options:
+            next_pos = head + dir
+            if (dir != -self.direction and 
+                self._will_stay_on_screen(head.x, head.y, dir) and
+                next_pos not in self.body):
+                self.direction = dir
+                self.facing_horizontally = self.direction.y == 0
+                break
+        
+    def update(self, target_length, player_pos):
         if self.direction != self._spawn_direction:
             print_debug("enemy", f"[WARNING] Direction mutated! Was {self._spawn_direction}, now {self.direction}")
 
         print_debug("enemy", f"[UPDATE START] Head: {self.body[0]}, Dir: {self.direction}")
         
-        self.move()
+        self.move_counter += 1
+        if self.move_counter >= self.move_threshold:
+            self.choose_new_direction_toward_player(player_pos)
+            self.move()
+            self.move_counter = 0
 
-        if self.direction != self._spawn_direction:
-            print_debug("enemy", f"[WARNING] Direction mutated! Was {self._spawn_direction}, now {self.direction}")
+        # if self.direction != self._spawn_direction:
+        #     print_debug("enemy", f"[WARNING] Direction mutated! Was {self._spawn_direction}, now {self.direction}")
 
         self.choose_new_direction_if_necessary()
-        print_debug("enemy", f"[UPDATE END] Head: {self.body[0]}, Dir: {self.direction}")
+        # print_debug("enemy", f"[UPDATE END] Head: {self.body[0]}, Dir: {self.direction}")
 
-        if self.direction != self._spawn_direction:
-            print_debug("enemy", f"[WARNING] Direction mutated! Was {self._spawn_direction}, now {self.direction}")
+        # if self.direction != self._spawn_direction:
+        #     print_debug("enemy", f"[WARNING] Direction mutated! Was {self._spawn_direction}, now {self.direction}")
 
         # Match player length by extending the tail
         while len(self.body) < target_length:
@@ -1014,6 +1078,9 @@ class EnemySnake:
             if i == 0:
                 pygame.draw.rect(surface, self.head_color, rect)
                 draw_eyes(surface, px, py, self.direction)
+                if self.facing_horizontally:
+                    draw_crown(surface, px, py)
+
             else:
                 surface.blit(self.body_color, (px, py))
 
@@ -1204,7 +1271,7 @@ class Game:
         
         if self.enable_enemy_snake and self.enemy_snake:
             print_debug("enemy", "[GAME] Calling enemy_snake.update()")
-            self.enemy_snake.update(len(self.snake.body))
+            self.enemy_snake.update(len(self.snake.body), self.snake.body[0])
             self.check_player_enemy_collision()
 
         if self.enemy_snake:
@@ -1938,10 +2005,10 @@ def main():
 
                         # Fill screen with Yellow
                         flash_overlay = pygame.Surface((SCREEN_SIZE, SCREEN_SIZE + HUD_HEIGHT))
-                        flash_overlay.fill((250, 218, 94)) # Naples Yellow
+                        flash_overlay.fill(BLACK)
 
                         # Render centered message
-                        message = FONTS.title_large.render("LEADERBOARD REFRESH", True, BLACK)
+                        message = FONTS.title_large.render("LEADERBOARD REFRESH", True, WHITE)
                         message_rect = message.get_rect(center=(SCREEN_SIZE // 2, (SCREEN_SIZE + HUD_HEIGHT) // 2))
                         flash_overlay.blit(message, message_rect)
 
