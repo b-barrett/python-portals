@@ -1,5 +1,15 @@
 [
     {
+        "name": "df",
+        "score": 152,
+        "size": 39,
+        "date": "05/20/25",
+        "level": 7,
+        "bonus": 40,
+        "ts": 1747762856.663444,
+        "duration": "4:45"
+    },
+    {
         "name": "Apr",
         "score": 113,
         "size": 30,
@@ -50,6 +60,16 @@
         "duration": "12:14"
     },
     {
+        "name": "dsfdf",
+        "score": 52,
+        "size": 26,
+        "date": "05/20/25",
+        "level": 5,
+        "bonus": 16,
+        "ts": 1747778029.330186,
+        "duration": "6:02"
+    },
+    {
         "name": "Ghost",
         "score": 47,
         "size": 22,
@@ -70,33 +90,13 @@
         "duration": "4:32"
     },
     {
-        "name": "Squatch",
-        "score": 39,
-        "size": 15,
-        "date": "05/19/25",
-        "level": 3,
-        "bonus": 13,
-        "ts": 1747683820.852995,
-        "duration": "7:58"
-    },
-    {
-        "name": "Yesssss",
-        "score": 37,
-        "size": 14,
-        "date": "05/19/25",
-        "level": 3,
-        "bonus": 12,
-        "ts": 1747683774.62277,
-        "duration": "1:07"
-    },
-    {
-        "name": "Sep",
-        "score": 36,
-        "size": 14,
-        "date": "05/19/25",
-        "level": 3,
-        "bonus": 11,
-        "ts": 1747692474.499307,
-        "duration": "1:02"
+        "name": "sdfdf",
+        "score": 42,
+        "size": 16,
+        "date": "05/20/25",
+        "level": 4,
+        "bonus": 10,
+        "ts": 1747785499.641889,
+        "duration": "3:08"
     }
 ]

@@ -104,9 +104,18 @@ FINAL_LEVEL_FAST = 21
 MOUSE_BONUS_UNLOCK_SLOW = 240  # Snake must be moving at or faster than this to allow mouse bonuses
 MOUSE_BONUS_UNLOCK_FAST = 135
 
-BONUS_SPAWN_INTERVAL = 5000  # 5 seconds = 5000 ms
-BONUS_LIFETIME_SEC = 5 # in seconds
-NUM_MUSIC_TRACKS = 22
+BONUS_SPAWN_INTERVAL = 4000  # 4 seconds = 4000 ms
+BONUS_SPAWN_PROBABILITY = 1/4
+BONUS_LIFETIME_SEC = 4 # in seconds
+
+# === Enemy Snake Spawn Conditions ===
+ENEMY_SPAWN_UNLOCK_SLOW = 240  # Snake must be moving at or faster than this to allow enemy spawns
+ENEMY_SPAWN_UNLOCK_FAST = 135
+
+ENEMY_SPAWN_INTERVAL = 5000
+ENEMY_SPAWN_PROBABILITY = 50
+
+# NUM_MUSIC_TRACKS = 22
 
 # Snake Eyes
 EYE_RADIUS = CELL_SIZE // 6 # Eye size is 1/6 of the snake's body segment
@@ -120,7 +129,40 @@ PUPIL_OFFSET = CELL_SIZE // 15 # Pupils can move within the eye by this amount
 # region UTILITY HELPERS
 # === UTILITY HELPERS ===
 
-# Load and prepare image function
+# throttled print debugging
+DEBUG_ENABLED = True  # Global master switch
+
+DEBUG_ENABLED_TAGS = {
+    "enemy": True,
+    "spawn": True,
+    "collision": True,
+    "speed": True,
+    "default": True
+}
+
+DEBUG_THROTTLES = {
+    "enemy": 1000,
+    "spawn": 750,
+    "collision": 500,
+    "speed": 250,
+    "default": 500
+}
+
+_last_debug_times = {}
+
+def print_debug(tag, msg):
+    if not DEBUG_ENABLED or not DEBUG_ENABLED_TAGS.get(tag, False):
+        return
+
+    now = pygame.time.get_ticks()
+    throttle = DEBUG_THROTTLES.get(tag, DEBUG_THROTTLES["default"])
+    last = _last_debug_times.get(tag, 0)
+
+    if now - last >= throttle:
+        print(f"[{tag.upper()}] {msg}")
+        _last_debug_times[tag] = now
+
+# Load and prepare images
 def load_image(path, size=None, use_alpha=False, transparency=None):
     """
     Load an image, optionally scale it, convert for display, and set transparency.
@@ -216,7 +258,7 @@ skin_names = [
     "Midnight Denim",
     "Rootscale",
     "Rusthide",
-    "Zebrastrike",
+    "King Cobra",
     "Rocktongue",
     "Pitgold",
     "Glaciercoil",
@@ -324,7 +366,7 @@ def save_active_leaderboard(player_name, leaderboard, tournament_mode=False):
 
 def load_active_leaderboard(player_name=None, tournament_mode=False):
     path = get_leaderboard_path(player_name, tournament_mode)
-    print(path)
+    # print(path)
     if os.path.exists(path):
         with open(path, "r") as f:
             return json.load(f)
@@ -502,6 +544,7 @@ def prompt_player_name_skin_music_voice_speed():
     # Constants (top of file or nearby)
     SKIN_PREVIEW_SIZE = SCREEN_SIZE // 4
 
+    # same as Game.eat_sound
     error_sound = pygame.mixer.Sound("assets/sounds/crunchybite.ogg")
     
     tournament_mode = False
@@ -726,49 +769,85 @@ def show_instructions_screen(game):
 # region class helper functions
 # === CLASS HELPER FUNCTIONS ===
 
-def generate_enemy_snake_offscreen(side, length):
-    """
-    Generate an enemy snake off-screen on the given side, facing inward.
-    
-    Args:
-        side (str): One of "left", "right", "top", "bottom"
-        length (int): Total number of segments to generate (same as player snake)
-    
-    Returns:
-        List[Vector2]: Full body of the enemy snake, starting just off-screen
+def draw_eyes(surface, base_x, base_y, direction):
 
-    """
+    # left eye is offset from left edge of cell
+    eye1_center = (
+        int(base_x + EYE_OFFSET),
+        int(base_y + EYE_OFFSET)
+    )
+
+    # right eye is offset from right edge of cell
+    eye2_center = (
+        int(base_x + CELL_SIZE - EYE_OFFSET),
+        int(base_y + EYE_OFFSET)
+    )
+
+    # Draw eyes
+    pygame.draw.circle(surface, WHITE, eye1_center, EYE_RADIUS)
+    pygame.draw.circle(surface, WHITE, eye2_center, EYE_RADIUS)
+
+    # Calculate pupil direction based on snake's direction
+    dir_x = int(direction.x * PUPIL_OFFSET)
+    dir_y = int(direction.y * PUPIL_OFFSET)
+
+    # Draw pupils
+    pupil1_center = (eye1_center[0] + dir_x, eye1_center[1] + dir_y)
+    pupil2_center = (eye2_center[0] + dir_x, eye2_center[1] + dir_y)
+    
+    pygame.draw.circle(surface, BLACK, pupil1_center, PUPIL_RADIUS)
+    pygame.draw.circle(surface, BLACK, pupil2_center, PUPIL_RADIUS)
+
+def generate_enemy_snake_offscreen(side, length):
     direction_map = {
         "left": Vector2(1, 0),
         "right": Vector2(-1, 0),
         "top": Vector2(0, 1),
         "bottom": Vector2(0, -1),
     }
+    max_attempts = 5  # Prevent infinite loop
+    for attempt in range(max_attempts):
 
-    direction = direction_map[side]
+        direction = direction_map[side]
 
-    if side in ("left", "right"):
-        y = random.randint(0, NUM_CELLS - 1)
-        x = -1 if side == "left" else NUM_CELLS
-        head = Vector2(x, y)
-    else:
-        x = random.randint(0, NUM_CELLS - 1)
-        y = -1 if side == "top" else NUM_CELLS
-        head = Vector2(x, y)
+        if side in ("left", "right"):
+            y = random.randint(0, NUM_CELLS - 1)
+            x = -1 if side == "left" else NUM_CELLS
+            head = Vector2(x, y)
+        else:
+            x = random.randint(0, NUM_CELLS - 1)
+            y = -1 if side == "top" else NUM_CELLS
+            head = Vector2(x, y)
 
-    body = [head + (-i * direction) for i in range(length)]
+        # Check if enemy will enter screen in ≤ 2 moves
+        next_pos = head + direction
+        next_next_pos = head + direction * 2
+        enters_screen = any(0 <= p.x < NUM_CELLS and 0 <= p.y < NUM_CELLS
+                            for p in (next_pos, next_next_pos))
+        
+        if not enters_screen:
+            print(f"[DEBUG] Rejected spawn: direction {direction} does not enter screen from {side} in next two moves")
 
-    # Debug output
-    print(f"Enemy Snake Spawn Side: {side}")
-    print(f"Direction: {direction}")
-    print(f"Head Position (offscreen): {head}")
-    print(f"Full Body Segments: {[tuple(seg) for seg in body]}")
+        if enters_screen:
+            body = [head + (-i * direction) for i in range(length)]
 
-    return body, direction
+            # Debug output
+            print(f"Enemy Spawn Side: {side}")
+            print(f"Enemy Direction: {direction}")
+            print(f"Enemy Head Position (offscreen): {head}")
+            print(f"Enemy Full Body: {[tuple(seg) for seg in body]}")
 
-def print_debug_enemy(msg):
-    # if DEBUG_ENEMY:  # set to False for production
-        print(f"[EnemySnake] {msg}")
+            return body, direction
+        
+        else:
+            print(f"[DEBUG] Invalid enemy spawn (won't screen). Retrying...")
+
+        # Try again from a different side
+        side = random.choice(["left", "right", "top", "bottom"])
+
+    # Fallback
+    print("[ERROR] Failed to spawn enemy snake after multiple attempts.")
+    return None, None
 
 # endregion
 
@@ -815,38 +894,9 @@ class Snake:
             else:
                 screen.blit(self.body_image, (px, py))
 
-            if index == 0:  # Draw eyes only for head
-                
-                base_x = px
-                base_y = py
-                
-                # left eye is offset from left edge of cell
-                eye1_center = (
-                    int(base_x + EYE_OFFSET),
-                    int(base_y + EYE_OFFSET)
-                )
-
-                # right eye is offset from right edge of cell
-                eye2_center = (
-                    int(base_x + CELL_SIZE - EYE_OFFSET),
-                    int(base_y + EYE_OFFSET)
-                )
-
-                # Draw eyes
-                pygame.draw.circle(screen, WHITE, eye1_center, EYE_RADIUS)
-                pygame.draw.circle(screen, WHITE, eye2_center, EYE_RADIUS)
-
-                # Calculate pupil direction based on snake's direction
-                dir_x = int(self.direction.x * PUPIL_OFFSET)
-                dir_y = int(self.direction.y * PUPIL_OFFSET)
-
-                # Draw pupils
-                pupil1_center = (eye1_center[0] + dir_x, eye1_center[1] + dir_y)
-                pupil2_center = (eye2_center[0] + dir_x, eye2_center[1] + dir_y)
-                
-                pygame.draw.circle(screen, BLACK, pupil1_center, PUPIL_RADIUS)
-                pygame.draw.circle(screen, BLACK, pupil2_center, PUPIL_RADIUS)
-
+            if index == 0:
+                draw_eyes(screen, px, py, self.direction)
+    
 class Food:    
     def __init__(self, snake_body, image):
         """Initialize food at a random position not occupied by the snake."""
@@ -872,27 +922,35 @@ class Food:
         py = self.position.y * CELL_SIZE + HUD_HEIGHT
         screen.blit(self.image, (px, py))
 
-
 class EnemySnake:
-    def __init__(self, body, direction, head_color=(255, 255, 255), body_color=(0, 0, 0)):
+    def __init__(self, body, direction, head_color=None, body_color=None):
         self.body = body  # list of Vector2
-        self.direction = direction
-        self.head_color = head_color
-        self.body_color = body_color
+        self.direction = Vector2(direction)
+        self._spawn_direction = Vector2(direction)  # Store original for debug
+        self.head_color = head_color if head_color else HEAD_COLORS[8]
+        self.body_color = body_color if body_color else load_image(skin_files[8], 
+                                     size=(CELL_SIZE, CELL_SIZE), use_alpha=True)
+        self.just_entered = True
+        
+        print_debug("enemy", f"[INIT] EnemySnake initialized with direction: {direction}")
         
         # Computes initial direction by comparing head and second segment
         # Example: if head is (-1, 14) and next is (-2, 14), then direction is (1, 0)
-        if len(body) >= 2:
-            self.direction = (body[0] - body[1]).normalize() # Normalize to unit vector (eg Vector2(1, 0)
-        else:
-            # Random initial direction (no movement into wall guaranteed yet)
-            self.direction = random.choice(
-                [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]
-                )
+        if self.direction is None:
+            if len(body) >= 2:
+                self.direction = (body[0] - body[1]).normalize() # Normalize to unit vector (eg Vector2(1, 0)
+            else:
+                # Random initial direction (no movement into wall guaranteed yet)
+                self.direction = random.choice(
+                    [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]
+                    )
 
     def move(self):
-        head = self.body[0] + self.direction
-        self.body = [head] + self.body[:-1]
+        new_head = self.body[0] + self.direction
+        print_debug("enemy",f"[MOVE] Head: {self.body[0]} → {new_head}, Direction: {self.direction}")
+        # self.body = [new_head] + self.body[:-1]
+        self.body.insert(0, new_head)
+        self.body.pop()
 
     def _will_stay_on_screen(self, x, y, direction):
         next_x = x + int(direction.x)
@@ -901,18 +959,47 @@ class EnemySnake:
 
     def choose_new_direction_if_necessary(self):
         head = self.body[0]
+
+        # Wait until enemy snake enters visible board before changing direction
+        if not (0 <= head.x < NUM_CELLS and 0 <= head.y < NUM_CELLS):
+            print_debug("enemy", f"[SKIP] Head still offscreen: {head}, Dir: {self.direction}")
+            return
+        
+        # Prevent direction change unless it's been on-screen for 1+ frames
+        if getattr(self, "just_entered", True):
+            self.just_entered = False # Change to false after entering
+            return # Skip choose_new_direction for this first frame only
+        
         possible_dirs = [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]
         random.shuffle(possible_dirs)
 
-        for dir in possible_dirs:
-            # no 180 degree turns (dir != -self.direction)
-            if dir != -self.direction and self._will_stay_on_screen(head.x, head.y, dir):
+        for dir in possible_dirs: 
+            next_pos = head + dir
+            if (
+                dir != -self.direction and  # prevent 180° turns
+                self._will_stay_on_screen(head.x, head.y, dir) and
+                next_pos not in self.body   # avoid self-collision
+            ):
+                print_debug("enemy", f"[Direction changed from {self.direction} to {dir}")
                 self.direction = dir
-                return  # first safe choice wins
+                return
 
     def update(self, target_length):
-        self.choose_new_direction_if_necessary()
+        if self.direction != self._spawn_direction:
+            print_debug("enemy", f"[WARNING] Direction mutated! Was {self._spawn_direction}, now {self.direction}")
+
+        print_debug("enemy", f"[UPDATE START] Head: {self.body[0]}, Dir: {self.direction}")
+        
         self.move()
+
+        if self.direction != self._spawn_direction:
+            print_debug("enemy", f"[WARNING] Direction mutated! Was {self._spawn_direction}, now {self.direction}")
+
+        self.choose_new_direction_if_necessary()
+        print_debug("enemy", f"[UPDATE END] Head: {self.body[0]}, Dir: {self.direction}")
+
+        if self.direction != self._spawn_direction:
+            print_debug("enemy", f"[WARNING] Direction mutated! Was {self._spawn_direction}, now {self.direction}")
 
         # Match player length by extending the tail
         while len(self.body) < target_length:
@@ -920,13 +1007,17 @@ class EnemySnake:
 
     def draw(self, surface):
         for i, segment in enumerate(self.body):
-            color = (255, 255, 255) if i == 0 else (0, 0, 0)  # white head, black body
             px = segment.x * CELL_SIZE
             py = segment.y * CELL_SIZE + HUD_HEIGHT
             rect = pygame.Rect(px, py, CELL_SIZE, CELL_SIZE)
-            pygame.draw.rect(surface, color, rect)
-            print_debug_enemy(f"Drawing {len(self.body)} segments at {[tuple(s) for s in self.body]}")
 
+            if i == 0:
+                pygame.draw.rect(surface, self.head_color, rect)
+                draw_eyes(surface, px, py, self.direction)
+            else:
+                surface.blit(self.body_color, (px, py))
+
+            print_debug("enemy",f"Drawing {len(self.body)} segments at {[tuple(s) for s in self.body]}")
 
 class Game:
     """Main game class that manages game state, updates, and rendering."""
@@ -942,9 +1033,10 @@ class Game:
         self.tournament_mode = tournament_mode
         self.mouse_bonus_unlock_ms = None
 
-        #Enemy Snake
+        #Enemy Snake-related
         self.enemy_snake = None  # will hold an EnemySnake instance or None
-        self.debug_enemy_snake = True  # Toggle this off to disable enemy logic
+        self.enable_enemy_snake = True  # Toggle this off to disable enemy logic
+        self.player_entry_side = None
 
         # Visuals
         self.background_index = random.randint(0, len(backgrounds) - 1)
@@ -953,7 +1045,8 @@ class Game:
         # Audio
         self.eat_sound = pygame.mixer.Sound("assets/sounds/crunchybite.ogg")
         self.bonus_sound = pygame.mixer.Sound("assets/sounds/shimmerbonus.ogg")
-        self.portal_sound = pygame.mixer.Sound("assets/sounds/going-to-the-next-level-114480.ogg")
+        self.penalty_sound = pygame.mixer.Sound("assets/sounds/disappear.ogg")
+        self.portal_sound = pygame.mixer.Sound("assets/sounds/nextlevel.ogg")
         self.food_voice_channel = pygame.mixer.Channel(4)
         self.food_voice_queue = []  # FIFO queue for pending sounds
         self.voice_queue_ready_time = 0  # Time (ms) after which we allow playing voice
@@ -987,8 +1080,9 @@ class Game:
     def reset_game_state(self):
         """Reset the game to its initial state used on first load and after game over."""
 
-        #Enemy snake
+        #Enemy snake-related
         self.enemy_snake = None
+        self.player_entry_side = None
 
         # Game progress
         self.start_time = pygame.time.get_ticks()
@@ -1025,7 +1119,10 @@ class Game:
         self.bonus_popup = None
         self.bonus_timer = 0
         self.bonus_points_total = 0
-        self.last_bonus_spawn_time = pygame.time.get_ticks() # Timestamp of last bonus spawn
+        self.last_bonus_spawn_time = pygame.time.get_ticks() # Timestamp ("Now") of last bonus spawn
+
+        # Enemy state
+        self.last_enemy_spawn_time = pygame.time.get_ticks() # Timestamp ("Now") of last enemy spawn
 
         # Clean up food voice queue (prevent leftover playback from prior session)
         self.food_voice_queue.clear()
@@ -1101,39 +1198,63 @@ class Game:
         self.check_collisions_and_portals()
         self.check_tail()
 
-        # === ENEMY SNAKE UPDATE ===
-        if self.debug_enemy_snake and self.enemy_snake:
+        current_time = pygame.time.get_ticks()
+        time_since_last_bonus = current_time - self.last_bonus_spawn_time
+        time_since_last_enemy = current_time - self.last_enemy_spawn_time
+        
+        if self.enable_enemy_snake and self.enemy_snake:
+            print_debug("enemy", "[GAME] Calling enemy_snake.update()")
             self.enemy_snake.update(len(self.snake.body))
             self.check_player_enemy_collision()
 
-        # Respawn logic: every 5s, 1 in 3 chance
-        if self.debug_enemy_snake and not self.enemy_snake:
-            current_time = pygame.time.get_ticks()
-            if current_time - getattr(self, "last_enemy_despawn_time", 0) >= 5000:
-                self.last_enemy_despawn_time = current_time
-                print(current_time)
-                if random.random() <= 1/3:
-                    spawn_side = random.choice(["left", "right", "top", "bottom"])
-                    length = len(self.snake.body)
-                    enemy_body, direction = generate_enemy_snake_offscreen(spawn_side, length)
-                    self.enemy_snake = EnemySnake(enemy_body, direction)
-                    print_debug_enemy(f"Spawned from {spawn_side} with length {len(enemy_body)}")
+        if self.enemy_snake:
+            print_debug("enemy", f"[SKIP SPAWN] Enemy already exists. Head: {self.enemy_snake.body[0]}")
 
-        current_time = pygame.time.get_ticks()
-        time_since_last_bonus = current_time - self.last_bonus_spawn_time
+        if (self.enable_enemy_snake and 
+            not self.enemy_snake and 
+            time_since_last_enemy >= ENEMY_SPAWN_INTERVAL and
+            not self.transitioning):
+                
+            print(f"[DEBUG] Enemy check triggered after {time_since_last_bonus} ms")
+            self.last_bonus_spawn_time = current_time  # Reset timer
+
+            random_roll_for_enemy = random.random()
+            print(f"[DEBUG] Random roll for enemy: {random_roll_for_enemy:.3f}")
+
+            if random_roll_for_enemy <= ENEMY_SPAWN_PROBABILITY:
+                available_sides = ["left", "right", "top", "bottom"]
+                if self.player_entry_side in available_sides:
+                    available_sides.remove(self.player_entry_side)
+                spawn_side = random.choice(available_sides)
+                print_debug("enemy", f"[SPAWN FILTER] Excluded side: {self.player_entry_side}, Chose: {spawn_side}")
+                length = len(self.snake.body)
+                print_debug("enemy", f"[SPAWN FILTER] player_entry_side={self.player_entry_side}, available_sides={available_sides}, chosen={spawn_side}")
+                enemy_body, direction = generate_enemy_snake_offscreen(spawn_side, length)
+                if enemy_body is not None and direction is not None:
+                    print_debug("enemy", 
+                                f"[SPAWNING] Direction before EnemySnake() call: {direction}")
+                    self.enemy_snake = EnemySnake(enemy_body, direction)
+
+                print_debug("enemy",
+                            f"Spawned from {spawn_side} with length {len(enemy_body)} and direction {direction}")
+                print_debug("enemy", f"[AFTER SPAWN] EnemySnake.direction = {self.enemy_snake.direction}")
+
+            else:
+                print_debug("enemy","Enemy spawn skipped.")
 
         if (
             not self.transitioning and
             not self.bonus_active and  # No existing bonus
             self.snake_speed_ms <= self.mouse_bonus_unlock_ms and
-            current_time - self.last_bonus_spawn_time >= BONUS_SPAWN_INTERVAL  # Enough time passed
-        ):
+            time_since_last_bonus >= BONUS_SPAWN_INTERVAL):
+            
             print(f"[DEBUG] Bonus check triggered after {time_since_last_bonus} ms")
             self.last_bonus_spawn_time = current_time  # Reset timer
 
             random_roll_for_bonus = random.random()
             print(f"[DEBUG] Random roll for bonus: {random_roll_for_bonus:.3f}")
-            if random_roll_for_bonus <= 0.25:  #25% bonus box spawn probability
+            
+            if random_roll_for_bonus <= BONUS_SPAWN_PROBABILITY:
                 print("[DEBUG] Bonus will spawn.")
                 self.spawn_bonus()
             else:
@@ -1202,27 +1323,6 @@ class Game:
         if not head.x.is_integer() or not head.y.is_integer():
             print(f"[ERROR] Non-integer snake head detected: {head}")
 
-        # if self.debug_enemy_snake and self.enemy_snake:
-        #     for segment in self.snake.body:
-        #         if segment in self.enemy_snake.body:
-        #             self.score -= self.level
-        #             self.enemy_snake = None  # Remove enemy snake from play
-                
-        #         px = segment.x * CELL_SIZE
-        #         py = segment.y * CELL_SIZE + HUD_HEIGHT
-        #         popup_screen_pos = (px + CELL_SIZE // 2, py + CELL_SIZE // 2)
-                
-        #         self.bonus_popup = {
-        #             "text": f"-{self.level}",
-        #             "color": RED,
-        #             "position": popup_screen_pos,
-        #             "timer": 60
-        #             }
-                
-        #         self.bonus_sound.play()
-        #         print_debug_enemy(f"Collision! Player penalized {self.level} points.")
-        #         break
-
         if self.portal_open and head == self.portal_position:
             self.portal_sound.play()
             print(f"[DEBUG] Portal entered at level {self.level}")
@@ -1256,21 +1356,23 @@ class Game:
             self.game_over()
 
     def check_player_enemy_collision(self):
-        if self.debug_enemy_snake and self.enemy_snake:
+        if self.enable_enemy_snake and self.enemy_snake:
             for segment in self.snake.body:
                 if segment in self.enemy_snake.body:
                     self.score -= self.level
                     self.enemy_snake = None
-                    popup_pos = (segment.x * CELL_SIZE + CELL_SIZE // 2,
-                                segment.y * CELL_SIZE + HUD_HEIGHT + CELL_SIZE // 2)
+
+                    px = segment.x * CELL_SIZE
+                    py = segment.y * CELL_SIZE + HUD_HEIGHT
+                    popup_pos = (px + CELL_SIZE // 2, py + CELL_SIZE // 2)
                     self.bonus_popup = {
                         "text": f"-{self.level}",
                         "color": RED,
                         "position": popup_pos,
                         "timer": 60
                     }
-                    # self.penalty_sound.play()
-                    print_debug_enemy(f"Collision! Player penalized {self.level} points.")
+                    self.penalty_sound.play()
+                    print_debug("enemy",f"Collision! Player penalized {self.level} points.")
                     break
 
     def check_tail(self):
@@ -1352,7 +1454,7 @@ class Game:
         self.snake.draw()
         self.food.draw()
 
-        if self.debug_enemy_snake and self.enemy_snake:
+        if self.enable_enemy_snake and self.enemy_snake:
             self.enemy_snake.draw(screen)
 
         if self.transitioning:
@@ -1638,6 +1740,9 @@ class Game:
         pygame.mixer.music.set_volume(1.0)
         pygame.mixer.music.play(-1, fade_ms=1000)
 
+        self.enemy_snake = None
+        self.last_enemy_spawn_time = pygame.time.get_ticks()  # Optional, restart cooldown
+
         previous_index = self.background_index
         while (new_index := random.randint(0, len(backgrounds) - 1)) == previous_index:
             pass
@@ -1646,18 +1751,7 @@ class Game:
         self.background = backgrounds[self.background_index]
         
         snake_length = len(self.snake.body) # Store snake length before reset
-    
-        # # === old: snake starts at center each level ===
-        # self.snake = Snake(self.head_color, self.snake_body_image) # Reset position to single seg at center
-        # starting_pos = Vector2(NUM_CELLS // 2, NUM_CELLS // 2)
-        
-        # # Rebuild snake body with preserved length
-        # for i in range(1, snake_length):
-        #     segment_pos = starting_pos - self.snake.direction * i
-        #     self.snake.body.append(segment_pos)
-        # # === old: snake starts at center each level ===
 
-        # === new: snake starts from side opposite portal that it entered on transition from previous level ===
         if self.level > 1 and self.last_portal_position and self.last_portal_side:
             x = self.last_portal_position.x
             y = self.last_portal_position.y
@@ -1682,24 +1776,34 @@ class Game:
             starting_pos = Vector2(NUM_CELLS // 2, NUM_CELLS // 2)
             direction = Vector2(1, 0)
 
+        if self.level > 1 and self.last_portal_side in ("left", "right", "top", "bottom"):
+            portal_entry_map = {
+            "left": "right",
+            "right": "left",
+            "top": "bottom",
+            "bottom": "top"
+            }
+            self.player_entry_side = portal_entry_map.get(self.last_portal_side)
+        else:
+            self.player_entry_side = None
+
         self.snake = Snake(self.head_color, self.snake_body_image)
         self.snake.direction = direction
         self.snake.last_direction = direction
         self.snake.body = [starting_pos]
         portal_side = getattr(self, "last_portal_side", "N/A")
         print(f"[DEBUG] Snake spawned at {starting_pos} facing {direction} (opposite '{portal_side}' wall).")
-        # === new: snake starts from side opposite portal that it entered on transition from previous level ===
 
         # Build out the snake and enemysnake in lock step ie enemy snake length matched snake length
         for i in range(1, snake_length):
             segment_pos = starting_pos - direction * i
             self.snake.body.append(segment_pos)
 
-        if self.debug_enemy_snake:
-            spawn_side = random.choice(["left", "right", "top", "bottom"])
-            enemy_body, direction = generate_enemy_snake_offscreen(spawn_side, len(self.snake.body))
-            self.enemy_snake = EnemySnake(enemy_body, direction)
-            print_debug_enemy(f"Spawned from {spawn_side} with length {len(enemy_body)}")
+        # if self.enable_enemy_snake:
+        #     spawn_side = random.choice(["left", "right", "top", "bottom"])
+        #     enemy_body, direction = generate_enemy_snake_offscreen(spawn_side, len(self.snake.body))
+        #     self.enemy_snake = EnemySnake(enemy_body, direction)
+        #     print_debug("enemy",f"Spawned from {spawn_side} with length {len(enemy_body)}")
 
         self.food_name, self.food_image = self.current_food()
         self.food = Food(self.snake.body, self.food_image)
@@ -1808,7 +1912,6 @@ def main():
 
                         # Apply skin and player name
                         game.apply_player_name_and_skin(player_name, skin_index)
-                        chosen_skin_name = skin_names[skin_index]
                         
                         # Set music and voice folder selections
                         game.music_folder = music_folder_paths[selected_music_index]
