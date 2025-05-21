@@ -63,6 +63,7 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (136, 8, 8)
 GOLD = (255, 215, 0)
+SMOKE = (177, 177, 177)
 GAME_NAME = "Python Portals"
 
 MY_FONT = "assets/fonts/VT323-Regular.ttf"
@@ -1143,6 +1144,7 @@ class Game:
         self.enemy_snake = None  # will hold an EnemySnake instance or None
         self.enable_enemy_snake = True  # Toggle this off to disable enemy logic
         self.player_entry_side = None
+        self.smoke_effects = []  # List of dicts: {"pos": Vector2, "timer": int}
 
         # Visuals
         self.background_index = random.randint(0, len(backgrounds) - 1)
@@ -1395,6 +1397,11 @@ class Game:
                 food_sound_duration_ms = int(next_sound.get_length() * 1000)
                 pygame.time.set_timer(RESTORE_VOLUME_AFTER_FOOD_SOUND, food_sound_duration_ms, loops=1)
 
+        # Update smoke effect timers and remove finished ones
+        for effect in self.smoke_effects:
+            effect["timer"] -= 1
+        self.smoke_effects = [e for e in self.smoke_effects if e["timer"] > 0]
+
     def check_food(self):
         """Check if the snake has eaten food and handle accordingly."""
         if self.snake.body[0] == self.food.position:
@@ -1465,9 +1472,10 @@ class Game:
         if self.enable_enemy_snake and self.enemy_snake:
             for segment in self.snake.body:
                 if segment in self.enemy_snake.body:
+                    head_pos = self.enemy_snake.body[0]  # Last known head position
+                    self.smoke_effects.append({"pos": head_pos, "timer": 10})
                     self.score -= self.level
                     self.enemy_snake = None
-
                     px = segment.x * CELL_SIZE
                     py = segment.y * CELL_SIZE + HUD_HEIGHT
                     popup_pos = (px + CELL_SIZE // 2, py + CELL_SIZE // 2)
@@ -1543,6 +1551,56 @@ class Game:
             self.bonus_timer = int(BONUS_LIFETIME_SEC * (1000 / self.snake_speed_ms))
             self.bonus_active = True
 
+    def draw_smoke_effects(self, surface):
+
+        for effect in self.smoke_effects:
+            
+            # Convert grid coordinates to pixel coordinates
+            px = effect["pos"].x * CELL_SIZE
+            py = effect["pos"].y * CELL_SIZE + HUD_HEIGHT
+
+            # How many frames left before smoke puff circle disappears
+            time_left = effect["timer"]
+            max_time = 20
+            shrink_factor = time_left / max_time
+
+            # Radius of the smoke circle (starts large, shrinks to 0)
+            base_radius = CELL_SIZE * 5.0
+            radius = int(base_radius * shrink_factor)
+
+            # Alpha controls transparency of smoke puff circle
+            # It’s the 4th value in an RGBA color tuple (Red, Green, Blue, Alpha)
+
+            # Fades linearly: starting at 255 (fully opaque = completely visible);
+            # ending at 0 (fully transparent = completely invisible)
+            alpha = int(255 * shrink_factor)
+
+            # Create a transparent surface large enough to contain the full smoke puff circle
+            surface_diameter = radius * 2
+            
+            # SRCALPHA enables per-pixel transparency for RGBA colors
+            # A in RGBA controls transparency of each pixel
+            smoke_surface = pygame.Surface((surface_diameter, surface_diameter), pygame.SRCALPHA)
+
+            # Draw smoke puff circle on surface
+            center = (radius, radius)
+            color = (*SMOKE, alpha)
+            pygame.draw.circle(smoke_surface, color, center, radius)
+
+            # Find center of smoke puff circle
+            top_left_snake_head = (px, py)
+            center_snake_head = (
+                top_left_snake_head[0] + CELL_SIZE // 2, 
+                top_left_snake_head[1] + CELL_SIZE // 2
+                )
+            top_left_smoke_puff_circle = (
+                center_snake_head[0] - radius,
+                center_snake_head[1] - radius
+                )
+            
+            # Blit smoke puff circle to the main screen
+            surface.blit(smoke_surface, top_left_smoke_puff_circle)
+
     def draw(self):
         if self.show_leaderboard:
             self.draw_leaderboard()
@@ -1559,9 +1617,10 @@ class Game:
         # Draw game elements on top — full brightness
         self.snake.draw()
         self.food.draw()
-
         if self.enable_enemy_snake and self.enemy_snake:
             self.enemy_snake.draw(screen)
+
+        self.draw_smoke_effects(screen)
 
         if self.transitioning:
             message = FONTS.title_large.render(f"LEVEL {self.level}", True, WHITE)
@@ -1604,9 +1663,6 @@ class Game:
             pause_overlay.set_alpha(256/4)
             screen.blit(pause_overlay, (0, 0))
 
-            # print("HUD height:", HUD_HEIGHT)
-            # print("SCREEN_SIZE:", SCREEN_SIZE)
-
             # Get screen dimensions
             screen_width, screen_height = screen.get_size()
 
@@ -1617,8 +1673,6 @@ class Game:
             # Center X and gameplay center Y
             center_x = screen_width // 2
             center_y = gameplay_top + (gameplay_height // 2)
-
-            # print(center_y)
 
             # Render text
             pause_text = FONTS.body_large.render("PAUSED", True, WHITE)
@@ -1637,12 +1691,6 @@ class Game:
             # Second line — immediately below first
             instruct_rect = instruct_text.get_rect(midtop=(center_x, block_top + pause_height))
 
-            # print("pause_rect.top:", pause_rect.top)
-            # print("instruct_rect.bottom:", instruct_rect.bottom)
-
-            # print("Top to HUD:", pause_rect.top - HUD_HEIGHT)
-            # print("Bottom to screen:", (SCREEN_SIZE + HUD_HEIGHT) - instruct_rect.bottom)
-            
             # Blit both
             screen.blit(pause_text, pause_rect)
             screen.blit(instruct_text, instruct_rect)
