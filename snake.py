@@ -9,6 +9,7 @@ import os
 import random
 import re
 import shutil
+import string
 import subprocess
 import sys
 import tempfile
@@ -397,16 +398,7 @@ def git_push_leaderboard():
         print("Git push skipped (not a Git repo)")
 
 def update_leaderboard(player_name, score, snake_length, level, bonus_points, duration=None, tournament_mode=False):
-    """
-    Add a new entry to the leaderboard (global or personal based on tournament_mode),
-    sort it, keep the top N, and save it to the correct file.
-
-    Returns the timestamp of the new entry if it's in the top N.
-    """
-    
-    # Load the appropriate leaderboard (global or personal)
     leaderboard = load_active_leaderboard(player_name, tournament_mode)
-    
     today = datetime.datetime.now().strftime("%m/%d/%y")
     timestamp = datetime.datetime.now().timestamp()
     leaderboard.append({
@@ -548,6 +540,8 @@ def prompt_player_name_skin_music_voice_speed():
 
     # same as Game.eat_sound
     error_sound = pygame.mixer.Sound("assets/sounds/crunchybite.ogg")
+
+    SAFE_CHARS = set(string.ascii_letters + string.digits + string.punctuation + " ")
     
     tournament_mode = False
     name = ""
@@ -710,10 +704,12 @@ def prompt_player_name_skin_music_voice_speed():
                     else:
                         print(f"❌ No .wav files found in: {preview_folder}")
 
-                elif event.unicode.isprintable():
-                    # Allow up to 8 characters total — we check length *before* adding next character
-                    if len(name) < 7:
-                        name += event.unicode
+                elif event.unicode and event.unicode.isprintable():
+                    if event.unicode in SAFE_CHARS:
+                        if len(name) < 7: # check length *before* adding next character
+                            name += event.unicode
+                        else:
+                            error_sound.play()
                     else:
                         error_sound.play()
 
@@ -1751,11 +1747,15 @@ class Game:
         ENTRY_LINE_SPACING = SCREEN_SIZE // 15
 
         # Draw Title
-        title_text = FONTS.title_medium.render("Python Portals Leaderboard", True, BLACK)
+        if self.tournament_mode:
+            title_text = FONTS.title_medium.render(f"{self.player_name}'s Top Scores", True, BLACK)
+        else:
+            title_text = FONTS.title_medium.render(f"Python Portals Leaderboard", True, BLACK)
+
         trophy_unicode = "\U0001F3C6"
         trophy_emoji_surf, _ = FONTS.emoji.render(trophy_unicode, BLACK)
 
-        emoji_spacing = 20
+        emoji_spacing = CELL_SIZE // 2
         emoji_width = trophy_emoji_surf.get_width()
         title_width = title_text.get_width()
         total_width = emoji_width + emoji_spacing + title_width + emoji_spacing + emoji_width
