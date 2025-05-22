@@ -728,7 +728,8 @@ def show_instructions_screen(game):
     howto_lines = [
         "Use arrow keys to move your snake.",
         "Eat food to grow and score points.",
-        "Avoid any contact with enemy snake.",
+        "Avoid contact with the enemy snakes.",
+        "(Hint: they're afraid of the edges).",
         "Eat four foods for portal.",
         "Enter portal to advance to next level.",
         "Snake speed increases each level.",
@@ -751,7 +752,7 @@ def show_instructions_screen(game):
         # How-to Lines
         for i, line in enumerate(howto_lines):
             rendered = FONTS.body_small.render(line, True, BLACK)
-            screen.blit(rendered, rendered.get_rect(center=(SCREEN_SIZE // 2, instructions_y + i * (SCREEN_SIZE // 15))))
+            screen.blit(rendered, rendered.get_rect(center=(SCREEN_SIZE // 2, instructions_y + i * (SCREEN_SIZE // 16))))
 
         # Instructions
         prompt = FONTS.body_small.render("Press ENTER to Return to Leaderboard", True, BLACK)
@@ -915,6 +916,13 @@ def generate_enemy_snake_offscreen(side, length):
     print("[ERROR] Failed to spawn enemy snake after multiple attempts.")
     return None, None
 
+def to_cell(pos):
+    return Vector2(int(pos.x), int(pos.y))
+
+def head_as_int(snake):
+    head = snake.body[0]
+    return Vector2(int(head.x), int(head.y))
+
 # endregion
 
 
@@ -938,7 +946,7 @@ class Snake:
         """Updates the snake's position based on its current direction.
         If the snake should grow, a new segment is added without removing the tail.
         """
-        new_head = self.body[0] + self.direction
+        new_head = to_cell(self.body[0]) + self.direction
         self.body.insert(0, new_head)
         if not self.grow:
             self.body.pop()
@@ -1015,22 +1023,23 @@ class EnemySnake:
                     )
 
     def move(self):
-        new_head = self.body[0] + self.direction
-        print_debug("enemy",f"[MOVE] Head: {self.body[0]} → {new_head}, Direction: {self.direction}")
-        # self.body = [new_head] + self.body[:-1]
+        new_head = to_cell(self.body[0]) + self.direction
         self.body.insert(0, new_head)
         self.body.pop()
 
     def _will_stay_on_screen(self, x, y, direction):
-        next_x = x + int(direction.x)
-        next_y = y + int(direction.y)
-        margin = 1
+        next_x = x + direction.x
+        next_y = y + direction.y
+        margin = 2
         return (
             margin <= next_x < NUM_CELLS - margin and 
             margin <= next_y < NUM_CELLS - margin)
 
-    def choose_new_direction_if_necessary(self):
-        head = self.body[0]
+    def choose_safe_direction_if_needed(self):
+
+        head = to_cell(self.body[0])
+        if self._will_stay_on_screen(head.x, head.y, self.direction):
+            return
 
         # Wait until enemy snake enters visible board before changing direction
         if not (0 <= head.x < NUM_CELLS and 0 <= head.y < NUM_CELLS):
@@ -1057,7 +1066,7 @@ class EnemySnake:
                 return
     
     def choose_new_direction_toward_player(self, player_pos):
-        head = self.body[0]
+        head = to_cell(self.body[0])
         dx = player_pos.x - head.x
         dy = player_pos.y - head.y
 
@@ -1083,28 +1092,17 @@ class EnemySnake:
     def update(self, target_length, player_pos):
         if self.direction != self._spawn_direction:
             print_debug("enemy", f"[WARNING] Direction mutated! Was {self._spawn_direction}, now {self.direction}")
-
-        print_debug("enemy", f"[UPDATE START] Head: {self.body[0]}, Dir: {self.direction}")
         
         self.move_counter += 1
         if self.move_counter >= self.move_threshold:
             self.choose_new_direction_toward_player(player_pos)
+            self.choose_safe_direction_if_needed()
             self.move()
             self.move_counter = 0
 
-        # if self.direction != self._spawn_direction:
-        #     print_debug("enemy", f"[WARNING] Direction mutated! Was {self._spawn_direction}, now {self.direction}")
-
-        self.choose_new_direction_if_necessary()
-        # print_debug("enemy", f"[UPDATE END] Head: {self.body[0]}, Dir: {self.direction}")
-
-        # if self.direction != self._spawn_direction:
-        #     print_debug("enemy", f"[WARNING] Direction mutated! Was {self._spawn_direction}, now {self.direction}")
-
-        # Match player length by extending the tail
         while len(self.body) < target_length:
             self.body.append(self.body[-1])  # Duplicate last segment to extend
-
+        
     def draw(self, surface):
         for i, segment in enumerate(self.body):
             px = segment.x * CELL_SIZE
@@ -1377,9 +1375,9 @@ class Game:
                 self.bonus_active = False
                 self.bonus_position = None
         
-        head = self.snake.body[0]
-        if not (0 <= head.x < NUM_CELLS) or not (0 <= head.y < NUM_CELLS):
-            print(f"[FATAL] Snake head moved out of bounds: {head}")
+        hx, hy = head_as_int(self.snake)
+        if not (0 <= hx < NUM_CELLS) or not (0 <= hy < NUM_CELLS):
+            print(f"[FATAL] Snake head moved out of bounds: {hx}, {hy}")
 
         if (not self.food_voice_channel.get_busy() 
             and self.food_voice_queue 
@@ -1430,16 +1428,15 @@ class Game:
                 self.generate_random_portal()
 
     def check_collisions_and_portals(self):
-        head = self.snake.body[0]
-
-        # debug
-        if not head.x.is_integer() or not head.y.is_integer():
-            print(f"[ERROR] Non-integer snake head detected: {head}")
+        hx, hy = head_as_int(self.snake)
+        head = to_cell(self.snake.body[0])
 
         if self.portal_open and head == self.portal_position:
-            self.portal_sound.play()
-            print(f"[DEBUG] Portal entered at level {self.level}")
-            print(f"[DEBUG] Snake entered portal at {self.portal_position} on '{self.last_portal_side}' wall.")
+            px, py = int(self.portal_position.x), int(self.portal_position.y)
+            if (hx, hy) == (px, py):
+                self.portal_sound.play()
+                print(f"[DEBUG] Portal entered at level {self.level}")
+                print(f"[DEBUG] Snake entered portal at {self.portal_position} on '{self.last_portal_side}' wall.")
 
             if self.level == self.final_level - 1:
                 print(f"[DEBUG] Triggering victory screen for final_level={self.final_level}")
@@ -1491,9 +1488,9 @@ class Game:
 
     def check_tail(self):
         """Check if the snake has collided with itself."""
-        head = self.snake.body[0]
+        hx, hy = head_as_int(self.snake)
         body_positions = {(segment.x, segment.y) for segment in self.snake.body[1:]} # set of tuples
-        head_pos = (head.x, head.y)
+        head_pos = (hx, hy)
         if head_pos in body_positions:
             self.game_over()
 
