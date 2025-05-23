@@ -313,7 +313,7 @@ if not background_files:
 # Sort by suffix (e.g., file-01.png, file-02.jpg) or fallback to alphabetical
 background_files = sorted(background_files, key=extract_suffix)
 
-print(f"✅ Loaded {len(background_files)} backgrounds across all extensions.")
+print(f"Loaded {len(background_files)} backgrounds across all extensions.")
 
 # Load and scale backgrounds
 backgrounds = [
@@ -724,7 +724,7 @@ def show_instructions_screen(game):
     howto_lines = [
         "Use arrow keys to move your snake.",
         "Eat food to grow and score points.",
-        "Avoid contact with the enemy snakes.",
+        "Avoid contact with enemy snakes.",
         "(Hint: they're afraid of the edges).",
         "Eat four foods for portal.",
         "Enter portal to advance to next level.",
@@ -889,7 +889,9 @@ def generate_enemy_snake_offscreen(side, length):
                             for p in (next_pos, next_next_pos))
         
         if not enters_screen:
-            print(f"[DEBUG] Rejected spawn: direction {direction} does not enter screen from {side} in next two moves")
+            print(f"[DEBUG] Rejected spawn: won't enter screen from {side} in next two moves with direction {direction}.")
+        else:
+            print(f"[DEBUG] Accepted spawn: will enter screen from {side} in next two moves with direction {direction}.")
 
         if enters_screen:
             body = [head + (-i * direction) for i in range(length)]
@@ -903,7 +905,7 @@ def generate_enemy_snake_offscreen(side, length):
             return body, direction
         
         else:
-            print(f"[DEBUG] Invalid enemy spawn (won't screen). Retrying...")
+            print(f"[DEBUG] Spawned enemy won't enter screen. Retrying.")
 
         # Try again from a different side
         side = random.choice(["left", "right", "top", "bottom"])
@@ -996,7 +998,7 @@ class EnemySnake:
     def __init__(self, body, direction, head_color=None, body_color=None):
         self.body = body  # list of Vector2
         self.direction = Vector2(direction)
-        self.facing_horizontally = self.direction.y == 0
+        self.facing_horizontally = (self.direction.y == 0)
         self._spawn_direction = Vector2(direction)  # Store original for debug
         self.head_color = head_color if head_color else HEAD_COLORS[8]
         self.body_color = body_color if body_color else load_image(skin_files[8], 
@@ -1011,7 +1013,7 @@ class EnemySnake:
         # Example: if head is (-1, 14) and next is (-2, 14), then direction is (1, 0)
         if self.direction is None:
             if len(body) >= 2:
-                self.direction = (body[0] - body[1]).normalize() # Normalize to unit vector (eg Vector2(1, 0)
+                self.direction = (body[0] - body[1]).normalize() # normalize ensures direction vector is of length 1
             else:
                 # Random initial direction (no movement into wall guaranteed yet)
                 self.direction = random.choice(
@@ -1023,6 +1025,7 @@ class EnemySnake:
         self.body.insert(0, new_head)
         self.body.pop()
 
+    # called for offscreen generated enemy snake
     def _will_stay_on_screen(self, x, y, direction):
         next_x = x + direction.x
         next_y = y + direction.y
@@ -1030,6 +1033,14 @@ class EnemySnake:
         return (
             margin <= next_x < NUM_CELLS - margin and 
             margin <= next_y < NUM_CELLS - margin)
+    
+    def _is_turning_offscreen(self, head, dir):
+        return (
+            (head.x <= 0 and dir == Vector2(-1, 0)) or
+            (head.x >= NUM_CELLS - 1 and dir == Vector2(1, 0)) or
+            (head.y <= 0 and dir == Vector2(0, -1)) or
+            (head.y >= NUM_CELLS - 1 and dir == Vector2(0, 1))
+        )
 
     def choose_safe_direction_if_needed(self):
 
@@ -1051,14 +1062,17 @@ class EnemySnake:
         random.shuffle(possible_dirs)
 
         for dir in possible_dirs: 
+            if self._is_turning_offscreen(head, dir): 
+                continue # Skip this direction and try the next one
             next_pos = head + dir
             if (
-                dir != -self.direction and  # prevent 180° turns
+                dir != -self.direction and # prevent 180° turns
                 self._will_stay_on_screen(head.x, head.y, dir) and
-                next_pos not in self.body   # avoid self-collision
+                next_pos not in self.body # avoid self-collision
             ):
                 print_debug("enemy", f"[Direction changed from {self.direction} to {dir}")
                 self.direction = dir
+                self.facing_horizontally = (self.direction.y == 0)
                 return
     
     def choose_new_direction_toward_player(self, player_pos):
@@ -1077,12 +1091,14 @@ class EnemySnake:
                 options.append(Vector2(1, 0) if dx > 0 else Vector2(-1, 0))
 
         for dir in options:
+            if self._is_turning_offscreen(head, dir):
+                continue # Skip this direction and try the next one
             next_pos = head + dir
             if (dir != -self.direction and 
                 self._will_stay_on_screen(head.x, head.y, dir) and
                 next_pos not in self.body):
                 self.direction = dir
-                self.facing_horizontally = self.direction.y == 0
+                self.facing_horizontally = (self.direction.y == 0)
                 break
         
     def update(self, target_length, player_pos):
@@ -1946,15 +1962,8 @@ class Game:
             segment_pos = starting_pos - direction * i
             self.snake.body.append(segment_pos)
 
-        # if self.enable_enemy_snake:
-        #     spawn_side = random.choice(["left", "right", "top", "bottom"])
-        #     enemy_body, direction = generate_enemy_snake_offscreen(spawn_side, len(self.snake.body))
-        #     self.enemy_snake = EnemySnake(enemy_body, direction)
-        #     print_debug("enemy",f"Spawned from {spawn_side} with length {len(enemy_body)}")
-
         self.food_name, self.food_image = self.current_food()
         self.food = Food(self.snake.body, self.food_image)
-
         self.level_score = 0 
         self.points_to_portal = 4 * self.level
         self.food_point_value = self.level
