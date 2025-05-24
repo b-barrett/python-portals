@@ -206,6 +206,12 @@ conda activate portals
 pip install -r requirements.txt
 ```
 
+```bash
+conda env list
+```
+
+
+
 ### 3. Run the Game
 
 ```bash

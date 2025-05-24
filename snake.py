@@ -142,7 +142,7 @@ DEBUG_ENABLED_TAGS = {
 }
 
 DEBUG_THROTTLES = {
-    "enemy": 1000,
+    "enemy": 250,
     "spawn": 750,
     "collision": 500,
     "speed": 250,
@@ -722,7 +722,7 @@ def show_instructions_screen(game):
     howto_lines = [
         "Use arrow keys to move your snake.",
         "Eat food to grow and score points.",
-        "Avoid head collisions with any part of the enemy snake.",
+        "Protect your head from enemy snake contact.",
         "(Tip: they're afraid of the edges).",
         "Eat four foods for portal.",
         "Enter portal to advance to next level.",
@@ -1379,14 +1379,12 @@ class Game:
             self.enemy_snake.update(len(self.snake.body), player_head)
             self.check_player_enemy_collision()
 
-            # Check if enemy snake has been killed (e.g., moved offscreen)
+            # Check if the enemy snake has been removed from the game.
             if self.enemy_snake and not self.enemy_snake.body:
                 if hasattr(self.enemy_snake, "_death_position"):
-                    self.smoke_effects.append({"pos": self.enemy_snake._death_position, "timer": 10})
+                    self.smoke_effects.append({"pos": self.enemy_snake._death_position, "timer": 60})
+                print_debug("enemy", f"Enemy snake moved offscreen and died at {self.enemy_snake._death_position}.")
                 self.enemy_snake = None
-
-        if self.enemy_snake:
-            print_debug("enemy", f"[SKIP SPAWN] Enemy already exists. Head: {self.enemy_snake.body[0]}")
 
         if (self.enable_enemy_snake and
             (self.enemy_snake is None or not self.enemy_snake.body) and 
@@ -1548,19 +1546,14 @@ class Game:
             # Check if any part of enemy snake hits player's head (enemy dies)
             for enemy_segment in enemy_snake:
                 if enemy_segment.x == player_head.x and enemy_segment.y == player_head.y:
-                    collision_location = enemy_segment  # Position where collision occurred
+                    collision_location = enemy_segment
+                    print_debug("enemy", f"Enemy snake died at {collision_location}.")
                     self.smoke_effects.append({"pos": collision_location, "timer": 10})
                     self.score -= self.level
                     self.enemy_snake = None
                     px = enemy_segment.x * CELL_SIZE
                     py = enemy_segment.y * CELL_SIZE + HUD_HEIGHT
                     popup_pos = (px + CELL_SIZE // 2, py + CELL_SIZE // 2)
-                    # self.bonus_popup = {
-                    #     "text": f"-{self.level}",
-                    #     "color": RED,
-                    #     "position": popup_pos,
-                    #     "timer": 60
-                    # }
 
                     self.popups.append({
                         "text": f"-{self.level}",
@@ -1789,20 +1782,10 @@ class Game:
         for popup in self.popups[:]:  # Copy to avoid modifying list while iterating
         # if self.bonus_popup:
             if not self.paused: 
-                # color = self.bonus_popup.get("color", WHITE)  # Default to WHITE if no color specified
-                # popup_text = FONTS.label.render(self.bonus_popup["text"], True, color)
-                # popup_rect = popup_text.get_rect(center=self.bonus_popup["position"])
-                # screen.blit(popup_text, popup_rect)
-
-                # self.bonus_popup["timer"] -= 1
-                # if self.bonus_popup["timer"] <= 0:
-                #     self.bonus_popup = None  # Erase popup after time expires
-
                 color = popup.get("color", WHITE)
                 popup_text = FONTS.label.render(popup["text"], True, color)
                 popup_rect = popup_text.get_rect(center=popup["position"])
                 screen.blit(popup_text, popup_rect)
-
                 popup["timer"] -= 1
                 if popup["timer"] <= 0:
                     self.popups.remove(popup)
@@ -1854,69 +1837,86 @@ class Game:
         else:
             title_text = FONTS.title_medium.render(f"Python Portals Leaderboard", True, BLACK)
 
+        # Trophy emoji (Unicode: 🏆) is rendered on either side of the title for visual appeal
         trophy_unicode = "\U0001F3C6"
         trophy_emoji_surf, _ = FONTS.emoji.render(trophy_unicode, BLACK)
 
+        # Calculate positions for the title and emojis to center them horizontally
         emoji_spacing = CELL_SIZE // 2
         emoji_width = trophy_emoji_surf.get_width()
         title_width = title_text.get_width()
         total_width = emoji_width + emoji_spacing + title_width + emoji_spacing + emoji_width
-
+        
+        # Center the row (emoji + title + emoji) horizontally on the screen
         row_start_x = SCREEN_SIZE // 2 - total_width // 2
-
         left_emoji_center_x = row_start_x + emoji_width // 2
         title_center_x = left_emoji_center_x + emoji_width // 2 + emoji_spacing + title_width // 2
         right_emoji_center_x = title_center_x + title_width // 2 + emoji_spacing + emoji_width // 2
-
-        y = TITLE_MARGIN_TOP
-
-        left_emoji_rect = trophy_emoji_surf.get_rect(center=(left_emoji_center_x, y))
-        title_rect = title_text.get_rect(center=(title_center_x, y))
-        right_emoji_rect = trophy_emoji_surf.get_rect(center=(right_emoji_center_x, y))
-
+        
+        # Draw the title and emojis, centered on the screen
+        left_emoji_rect = trophy_emoji_surf.get_rect(center=(left_emoji_center_x, TITLE_MARGIN_TOP))
+        title_rect = title_text.get_rect(center=(title_center_x, TITLE_MARGIN_TOP))
+        right_emoji_rect = trophy_emoji_surf.get_rect(center=(right_emoji_center_x, TITLE_MARGIN_TOP))
         screen.blit(trophy_emoji_surf, left_emoji_rect)
         screen.blit(title_text, title_rect)
         screen.blit(trophy_emoji_surf, right_emoji_rect)
 
-        # Draw Headers
-        headers = ["Rank", "Name", "Score", "Size", "Lvl", "Bns", "Dur", "Date"]
+        # Define headers and row keys for the leaderboard table
+        all_headers = ["Rank", "Name", "Score", "Size", "Lvl", "Bns", "Dur", "Date"]
+
+        # Lambdas to extract data for each column from a leaderboard entry
+        all_row_keys = [
+            lambda idx, entry: f"{idx+1}",
+            lambda idx, entry: entry["name"],
+            lambda idx, entry: str(entry.get("score", 0)),
+            lambda idx, entry: str(entry.get("size", "N/A")),
+            lambda idx, entry: str(entry.get("level", "N/A")),
+            lambda idx, entry: f"{int(100 * entry.get('bonus', 0) / entry.get('score', 1))}%",
+            lambda idx, entry: entry.get("duration", "N/A"),
+            lambda idx, entry: entry.get("date", "N/A")[:5],
+        ]
+        
+        # Exclude the "Name" column in tournament mode
+        if self.tournament_mode:
+            headers = [h for h in all_headers if h != "Name"]
+            row_keys = [rk for h, rk in zip(all_headers, all_row_keys) if h != "Name"]
+        else:
+            headers = all_headers
+            row_keys = all_row_keys
+
+        # Calculate horizontal spacing between columns
         spacing = SCREEN_SIZE // len(headers)
 
+        # Render each header and center it within its column
         for i, header in enumerate(headers):
             header_surf = FONTS.body_medium.render(header, True, BLACK)
             header_rect = header_surf.get_rect(center=(spacing * i + spacing // 2, 
                                                        HEADER_MARGIN_TOP))
             screen.blit(header_surf, header_rect)
 
+
+        # Load leaderboard data (global or player-specific, depending on mode)
         leaderboard = load_active_leaderboard(self.player_name, self.tournament_mode)
         entries_start_y = ENTRY_MARGIN_TOP
 
+        # Render each leaderboard entry as a row
         for idx, entry in enumerate(leaderboard):
-            score = entry.get("score", 0)
-            bonus = entry.get("bonus", 0)
-            bonus_percent = int(100 * bonus / score) if score > 0 else 0
-            short_date = entry.get("date", "N/A")[:5]  # Get first 5 characters of date string
-            row = [
-                f"{idx+1}",
-                entry["name"],
-                str(score),
-                str(entry["size"]),
-                str(entry["level"]),
-                f"{bonus_percent}%",
-                entry.get("duration", "N/A"),
-                short_date
-            ]
+            row = [rk(idx, entry) for rk in row_keys]
 
+            # Highlight the row if it matches the highlighted timestamp
             is_highlight = self.highlight_entry_ts and entry.get("ts") == self.highlight_entry_ts
             row_color = (173, 216, 230) if is_highlight else WHITE
 
+            # Calculate row position and dimensions
             row_height = FONTS.body_small.get_height()
             row_y = entries_start_y + idx * ENTRY_LINE_SPACING
-            row_top = row_y - row_height // 2  # center align background with text
+            row_top = row_y - row_height // 2 
 
+            # Draw the row background
             row_rect = pygame.Rect(0, row_top, SCREEN_SIZE, row_height)
             pygame.draw.rect(screen, row_color, row_rect)
 
+            # Render each column in the row
             for i, item in enumerate(row):
                 entry_surf = FONTS.body_small.render(item, True, BLACK)
                 entry_rect = entry_surf.get_rect(center=(
@@ -1925,6 +1925,7 @@ class Game:
                 ))
                 screen.blit(entry_surf, entry_rect)
         
+        # Render footer instructions at the bottom of the screen
         instructions_text = FONTS.body_small.render(
             "Press ENTER to Play,", True, BLACK)
         instructions_rect = instructions_text.get_rect(
@@ -2254,12 +2255,6 @@ def main():
                                 px = game.bonus_position.x * CELL_SIZE
                                 py = game.bonus_position.y * CELL_SIZE + HUD_HEIGHT
                                 
-                                # game.bonus_popup = {
-                                #     "text": f"+{bonus_points}",
-                                #     "position": (px + CELL_SIZE // 2, py + CELL_SIZE // 2),
-                                #     "timer": 60  # Frames the popup will last (~1 second at 60 fps)
-                                # }
-
                                 game.popups.append({
                                     "text": f"+{bonus_points}",
                                     "color": WHITE,

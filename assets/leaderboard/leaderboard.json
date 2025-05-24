@@ -1,5 +1,15 @@
 [
     {
+        "name": "Ben B,",
+        "score": 258,
+        "size": 39,
+        "date": "05/23/25",
+        "level": 9,
+        "bonus": 86,
+        "ts": 1748062007.665385,
+        "duration": "5:25"
+    },
+    {
         "name": "df",
         "score": 152,
         "size": 39,
@@ -88,15 +98,5 @@
         "bonus": 11,
         "ts": 1747682199.219588,
         "duration": "4:32"
-    },
-    {
-        "name": "sdfdf",
-        "score": 42,
-        "size": 16,
-        "date": "05/20/25",
-        "level": 4,
-        "bonus": 10,
-        "ts": 1747785499.641889,
-        "duration": "3:08"
     }
 ]
