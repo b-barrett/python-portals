@@ -16,8 +16,9 @@ import tempfile
 
 # Third-party
 import pygame
-from pygame.math import Vector2
 import pygame.freetype
+from pygame.math import Vector2
+from pygame import Color
 
 # Initialize all pygame modules (important: call before any mixer or display operations)
 pygame.init()
@@ -116,7 +117,7 @@ ENEMY_SPAWN_UNLOCK_SLOW = 240  # Snake must be moving at or faster than this to 
 ENEMY_SPAWN_UNLOCK_FAST = 135
 ENEMY_SPAWN_INTERVAL = 5000
 ENEMY_SPAWN_PROBABILITY = 50
-ENEMY_MARGIN = 2  # Number of cells from edge that enemy snakes avoid
+ENEMY_MARGIN = 3  # Number of cells from edge that enemy snakes avoid
 
 # Snake Eyes
 EYE_RADIUS = CELL_SIZE // 6 # Eye size is 1/6 of the snake's body segment
@@ -367,11 +368,19 @@ def save_active_leaderboard(player_name, leaderboard, tournament_mode=False):
 
 def load_active_leaderboard(player_name=None, tournament_mode=False):
     path = get_leaderboard_path(player_name, tournament_mode)
-    # print(path)
-    if os.path.exists(path):
+    if not os.path.exists(path):
+        return []
+    try:
         with open(path, "r") as f:
-            return json.load(f)
-    return []
+            data = json.load(f)
+            if isinstance(data, list):
+                return data
+            else:
+                print(f"⚠️ Leaderboard file {path} is not a list. Ignoring.")
+                return []
+    except (json.JSONDecodeError, OSError) as e:
+        print(f"⚠️ Failed to load leaderboard {path}: {e}")
+        return []
 
 def git_pull_leaderboard():
     if os.path.isdir(".git"):
@@ -395,7 +404,7 @@ def git_push_leaderboard():
     else:
         print("Git push skipped (not a Git repo)")
 
-def update_leaderboard(player_name, score, snake_length, level, bonus_points, duration=None, tournament_mode=False):
+def update_leaderboard(player_name, score, snake_length, level, bonus_points, penalty_points, duration=None, tournament_mode=False):
     leaderboard = load_active_leaderboard(player_name, tournament_mode)
     today = datetime.datetime.now().strftime("%m/%d/%y")
     timestamp = datetime.datetime.now().timestamp()
@@ -406,8 +415,9 @@ def update_leaderboard(player_name, score, snake_length, level, bonus_points, du
         "date": today,
         "level": level,
         "bonus": bonus_points,
+        "penalty": penalty_points,
         "ts": timestamp,
-        "duration": duration, 
+        "duration": duration,
         })
     leaderboard = sorted(
         leaderboard,
@@ -729,11 +739,11 @@ def show_instructions_screen(game):
         "Snake speed increases each level.",
         "Food value increases each level.",
         "Use cursor to click blue square bonuses.",
-        "Game ends when snake hits wall.",
-        "Game ends when snake eats tail.",
+        "Game ends when snake hits wall or tail.",
         "Press P to pause and catch your breath.",
         f"Reach level {game.final_level} to achieve immortality.",
-        "See you on the leaderboard!"
+        "See you on the leaderboard!",
+        "Made with Love by Julia and Ben, Co-Devs"
     ]
 
     while True:
@@ -1203,6 +1213,7 @@ class Game:
         self.enable_enemy_snake = True  # Toggle this off to disable enemy logic
         self.player_entry_side = None
         self.smoke_effects = []  # List of dicts: {"pos": Vector2, "timer": int}
+        self.penalty_points = 0  # Track total penalty points
 
         # Visuals
         self.background_index = random.randint(0, len(backgrounds) - 1)
@@ -1231,7 +1242,7 @@ class Game:
         self.load_portal_animation()
 
         # Bonus Tracking
-        self.bonus_points_total = 0
+        self.bonus_points = 0
 
         # Game Duration
         self.start_time = None
@@ -1250,6 +1261,7 @@ class Game:
         #Enemy snake-related
         self.enemy_snake = None
         self.player_entry_side = None
+        self.penalty_points = 0
 
         # Game progress
         self.start_time = pygame.time.get_ticks()
@@ -1285,7 +1297,7 @@ class Game:
         self.bonus_position = None
         self.bonus_popup = None
         self.bonus_timer = 0
-        self.bonus_points_total = 0
+        self.bonus_points = 0
         self.last_bonus_spawn_time = pygame.time.get_ticks() # Timestamp ("Now") of last bonus spawn
 
         self.popups = []
@@ -1549,7 +1561,9 @@ class Game:
                     collision_location = enemy_segment
                     print_debug("enemy", f"Enemy snake died at {collision_location}.")
                     self.smoke_effects.append({"pos": collision_location, "timer": 10})
-                    self.score -= self.level
+                    penalty = self.level
+                    self.score -= penalty
+                    self.penalty_points += penalty
                     self.enemy_snake = None
                     px = enemy_segment.x * CELL_SIZE
                     py = enemy_segment.y * CELL_SIZE + HUD_HEIGHT
@@ -1594,10 +1608,9 @@ class Game:
         self.end_time = pygame.time.get_ticks()
         if self.score > 0:
             entry_timestamp = update_leaderboard(
-                self.player_name, self.score, len(self.snake.body),
-                self.level, self.bonus_points_total, self.game_duration(),
-                self.tournament_mode
-                )
+                self.player_name, self.score, len(self.snake.body), self.level, 
+                self.bonus_points, self.penalty_points, self.game_duration(),
+                self.tournament_mode)
             self.highlight_entry_ts = entry_timestamp
             
             if self.tournament_mode and entry_timestamp:
@@ -1651,7 +1664,18 @@ class Game:
 
             # Fades linearly: starting at 255 (fully opaque = completely visible);
             # ending at 0 (fully transparent = completely invisible)
-            alpha = int(255 * shrink_factor)
+            # alpha = int(255 * shrink_factor)
+            alpha = max(0, min(255, int(255 * shrink_factor))) # clamp btw 0 and 255 to be safe
+
+            # if radius > base_radius or radius <= 0 or alpha == 0:
+            #     print(f"[SMOKE DEBUG] Skipping drawing smoke: radius={radius}, base_radius={base_radius}, alpha={alpha}")
+            #     continue  # Skip drawing if smoke is invisible or invalid
+            
+            if radius > base_radius:
+                print(f"[SMOKE DEBUG] Radius too large! radius={radius}, base_radius={base_radius}")
+                continue
+            elif radius <= 0 or alpha == 0:
+                continue
 
             # Create a transparent surface large enough to contain the full smoke puff circle
             surface_diameter = radius * 2
@@ -1662,9 +1686,20 @@ class Game:
 
             # Draw smoke puff circle on surface
             center = (radius, radius)
-            color = (*SMOKE, alpha)
-            pygame.draw.circle(smoke_surface, color, center, radius)
+            
+            # color = (SMOKE[0], SMOKE[1], SMOKE[2], alpha)  # Explicit RGBA tuple unpacking
+            # color = (*SMOKE, alpha)
+            color = Color(*SMOKE, alpha) # use pygame.Color for guaranteed safety
 
+            # print(f"alpha={alpha}, radius={radius}, color={color}")
+
+            try:
+                pygame.draw.circle(smoke_surface, color, center, radius)
+
+            except ValueError as e:
+                print(f"Color error with color={color}, radius={radius}, center={center}")
+                raise e
+            
             # Find center of smoke puff circle
             top_left_snake_head = (px, py)
             center_snake_head = (
@@ -1862,7 +1897,7 @@ class Game:
         screen.blit(trophy_emoji_surf, right_emoji_rect)
 
         # Define headers and row keys for the leaderboard table
-        all_headers = ["Rank", "Name", "Score", "Size", "Lvl", "Bns", "Dur", "Date"]
+        all_headers = ["Rank", "Name", "Pts", "Size", "Lvl", "Bns", "Pen", "Dur", "Date"]
 
         # Lambdas to extract data for each column from a leaderboard entry
         all_row_keys = [
@@ -1872,6 +1907,7 @@ class Game:
             lambda idx, entry: str(entry.get("size", "N/A")),
             lambda idx, entry: str(entry.get("level", "N/A")),
             lambda idx, entry: f"{int(100 * entry.get('bonus', 0) / entry.get('score', 1))}%",
+            lambda idx, entry: f"{int(100 * entry.get('penalty', 0) / entry.get('score', 1))}%",
             lambda idx, entry: entry.get("duration", "N/A"),
             lambda idx, entry: entry.get("date", "N/A")[:5],
         ]
@@ -1889,7 +1925,7 @@ class Game:
 
         # Render each header and center it within its column
         for i, header in enumerate(headers):
-            header_surf = FONTS.body_medium.render(header, True, BLACK)
+            header_surf = FONTS.body_small.render(header, True, BLACK)
             header_rect = header_surf.get_rect(center=(spacing * i + spacing // 2, 
                                                        HEADER_MARGIN_TOP))
             screen.blit(header_surf, header_rect)
@@ -1905,7 +1941,7 @@ class Game:
 
             # Highlight the row if it matches the highlighted timestamp
             is_highlight = self.highlight_entry_ts and entry.get("ts") == self.highlight_entry_ts
-            row_color = (173, 216, 230) if is_highlight else WHITE
+            row_color = GOLD if is_highlight else WHITE
 
             # Calculate row position and dimensions
             row_height = FONTS.body_small.get_height()
@@ -2248,7 +2284,7 @@ def main():
                             if bonus_rect.collidepoint(mouse_x, mouse_y):
                                 bonus_points = game.level + 1
                                 game.score += bonus_points
-                                game.bonus_points_total += bonus_points
+                                game.bonus_points += bonus_points
                                 game.bonus_sound.play()
                                 print(f"🎯 Bonus clicked: + {bonus_points}")
                                 game.bonus_active = False
