@@ -68,6 +68,13 @@ GOLD = (255, 215, 0)
 SMOKE = (177, 177, 177)
 GAME_NAME = "Python Portals"
 
+# In Frames Per Second
+# Note: game framerate is 60 FPS. See: game.draw(); pygame.display.update(); clock.tick(60)
+
+EFFECT_LIFETIME_SHORT = 15
+EFFECT_LIFETIME_STANDARD = 30
+EFFECT_LIFETIME_LONG = 60 # effect lasts 1 second at game's current framerate: clock.tick(60)
+
 MY_FONT = "assets/fonts/VT323-Regular.ttf"
 EMOJI_FONT = "Apple Color Emoji"
 
@@ -110,14 +117,13 @@ MOUSE_BONUS_UNLOCK_FAST = 135
 
 BONUS_SPAWN_INTERVAL = 4000  # 4 seconds = 4000 ms
 BONUS_SPAWN_PROBABILITY = 1/4
-BONUS_LIFETIME_SEC = 4 # in seconds
+BONUS_LIFETIME_SEC = 5 # in seconds
 
 # === Enemy Snake Spawn Conditions ===
-ENEMY_SPAWN_UNLOCK_SLOW = 240  # Snake must be moving at or faster than this to allow enemy spawns
-ENEMY_SPAWN_UNLOCK_FAST = 135
 ENEMY_SPAWN_INTERVAL = 5000
-ENEMY_SPAWN_PROBABILITY = 50
-ENEMY_MARGIN = 3  # Number of cells from edge that enemy snakes avoid
+ENEMY_SPAWN_PROBABILITY = 1
+ENEMY_MARGIN = 4  # Number of cells from edge that enemy snakes avoid
+ENEMY_MAX_SIZE = 50
 
 # Snake Eyes
 EYE_RADIUS = CELL_SIZE // 6 # Eye size is 1/6 of the snake's body segment
@@ -131,7 +137,6 @@ PUPIL_OFFSET = CELL_SIZE // 15 # Pupils can move within the eye by this amount
 # region UTILITY HELPERS
 # === UTILITY HELPERS ===
 
-# throttled print debugging
 DEBUG_ENABLED = True  # Global master switch
 
 DEBUG_ENABLED_TAGS = {
@@ -302,8 +307,6 @@ background_files_by_ext = {
 background_files = []
 for ext in supported_exts:
     files = background_files_by_ext[ext]
-    if files:
-        print(f"Found {len(files)} files with extension .{ext}")
     background_files.extend(files)
 
 if not background_files:
@@ -311,8 +314,6 @@ if not background_files:
 
 # Sort by suffix (e.g., file-01.png, file-02.jpg) or fallback to alphabetical
 background_files = sorted(background_files, key=extract_suffix)
-
-print(f"Loaded {len(background_files)} backgrounds across all extensions.")
 
 # Load and scale backgrounds
 backgrounds = [
@@ -963,7 +964,6 @@ class EnemySnake:
         self.head_color = head_color if head_color else HEAD_COLORS[8]
         self.body_color = body_color if body_color else load_image(skin_files[8], 
                                      size=(CELL_SIZE, CELL_SIZE), use_alpha=True)
-        self.just_entered = True
         self.move_counter = 0
         self.move_threshold = 1
 
@@ -980,54 +980,82 @@ class EnemySnake:
                     [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]
                     )
 
-    def move(self):
+    def move(self, player_body):
         new_head = to_cell(self.body[0]) + self.direction
 
-        # Guard move here, not just in choose_* and kill enemy if next move would be offscreen
+        # Off-screen check - wall collision
         if new_head.x < 0 or new_head.x >= NUM_CELLS or new_head.y < 0 or new_head.y >= NUM_CELLS:
-            print_debug("enemy", f"[DEATH] Enemy went offscreen at {new_head}. Despawning.")
+            print_debug("enemy", f"[DEATH] Enemy collided with wall at {new_head}. Player rewarded!")
             self._death_position = self.body[0]  # Save for Game to trigger smoke
             self.body = []  # Clear the body = effectively removed
+            return True  # Return True to indicate player should be rewarded
+
+        # Final safety guard against moving through player
+        if new_head in player_body:
+            print_debug("enemy", f"[TRAPPED] Enemy would hit player at {new_head}. Self-destructing.")
+            self._death_position = self.body[0]
+            self.body = []
             return
+        
         self.body.insert(0, new_head)
         self.body.pop()
 
-    def choose_safe_direction_if_needed(self):
+    def choose_safe_direction_if_needed(self, player_body):
+        if not self.body:  # Add this guard check
+            return
+        
         head = to_cell(self.body[0])
         if self._is_next_move_onscreen(head.x, head.y, self.direction, margin=ENEMY_MARGIN):
-            return
-
-        # Wait until enemy snake enters visible board before changing direction
-        if not (ENEMY_MARGIN <= head.x < NUM_CELLS - ENEMY_MARGIN and ENEMY_MARGIN <= head.y < NUM_CELLS - ENEMY_MARGIN):
-            print_debug("enemy", f"[SKIP] Head still offscreen: {head}, Dir: {self.direction}")
-            return
-        
-        # Prevent direction change unless it's been on-screen for 1+ frames
-        if getattr(self, "just_entered", True):
-            self.just_entered = False # Change to false after entering
-            return # Skip choose_new_direction for this first frame only
-        
-        possible_dirs = [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]
-        random.shuffle(possible_dirs)
-
-        for dir in possible_dirs: 
-            if self._is_turn_offscreen(head, dir): 
-                continue # Skip this direction and try the next one
-            next_pos = head + dir
-            if (
-                dir != -self.direction and # prevent 180° turns
-                self._is_next_move_onscreen(head.x, head.y, dir, margin=ENEMY_MARGIN) and
-                next_pos not in self.body # avoid self-collision
-            ):
-                print_debug("enemy", f"[Direction changed from {self.direction} to {dir}")
-                self.direction = dir
-                self.facing_horizontally = (self.direction.y == 0)
+            next_pos = head + self.direction
+            if next_pos not in self.body and next_pos not in player_body:
                 return
+
+        # Allow newly spawned enemy snake to keep moving in spawn direction until it's past margin
+        if not (ENEMY_MARGIN <= head.x < NUM_CELLS - ENEMY_MARGIN and 
+                ENEMY_MARGIN <= head.y < NUM_CELLS - ENEMY_MARGIN):
+            if self.direction == self._spawn_direction:  # Keep original direction while entering
+                next_pos = head + self.direction
+                if next_pos in player_body:
+                    print_debug("enemy", f"[ENEMY-CAUSED COLLISION] Enemy hit player at {next_pos}. Player rewarded!")
+                    self._death_position = head
+                    self.body = []
+                    return True # Player should be rewarded
+
+            return # Safe to keep moving in spawn direction through safe zone
+
+        # Try ALL possible directions systematically
+        all_directions = [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]
+        max_attempts = 5 # Try directions multiple times in different orders via .shuffle()
+
+        for attempt in range(max_attempts):
+            random.shuffle(all_directions) # Shuffle for each attempt to avoid patterns
+
+            for dir in all_directions:
+                if dir == -self.direction or self._is_turn_offscreen(head, dir):
+                    continue
+
+                next_pos = head + dir
+                if (self._is_next_move_onscreen(head.x, head.y, dir, margin=ENEMY_MARGIN) and
+                    next_pos not in self.body and # Avoid self-collision
+                    next_pos not in player_body): # Avoid moving through player's body
+                    self.direction = dir
+                    self.facing_horizontally = (self.direction.y == 0)
+                    return False # Valid move found
+
+        # If we get here, enemy did not move legally - reward player
+        print_debug("enemy", f"[ENEMY-CAUSED COLLISION] Enemy trapped at {head}. Player rewarded!")
+        self._death_position = head
+        self.body = []
+        return True # Player should be rewarded
     
-    def choose_new_direction_toward_player(self, player, margin=None):
+    def choose_new_direction_toward_player(self, player_head, player_body, margin=None):
+        # Don't try to chase if we're already colliding
+        if not self.body or self.body[0] in player_body:
+            return False
+
         head = to_cell(self.body[0])
-        dx = player.x - head.x
-        dy = player.y - head.y
+        dx = player_head.x - head.x
+        dy = player_head.y - head.y
 
         options = []
         if abs(dx) >= abs(dy):
@@ -1039,51 +1067,60 @@ class EnemySnake:
             if dx != 0:
                 options.append(Vector2(1, 0) if dx > 0 else Vector2(-1, 0))
 
+         # Add remaining non-180° directions as backup options
+        all_directions = [Vector2(1,0), Vector2(-1,0), Vector2(0,1), Vector2(0,-1)]
+        for dir in all_directions:
+            if dir not in options and dir != -self.direction:
+                options.append(dir)
+        
         for dir in options:
             if self._is_turn_offscreen(head, dir):
                 continue # Skip this direction and try the next one
             next_pos = head + dir
             if (dir != -self.direction and 
                 self._is_next_move_onscreen(head.x, head.y, dir, margin=0) and
-                next_pos not in self.body):
+                next_pos not in self.body and # Avoid self-collision
+                next_pos not in player_body): # Avoid moving through player's body
                 self.direction = dir
                 self.facing_horizontally = (self.direction.y == 0)
-                break
+                return True # Found valid move
+
+        return False # No valid moves found
         
-    def update(self, target_length, player_pos):
+    def update(self, target_length, player_body):
         if not self.body:
             return  # Snake is dead (e.g., went offscreen), skip update
-        
-        if self.direction != self._spawn_direction:
-            print_debug("enemy", f"[WARNING] Direction mutated! Was {self._spawn_direction}, now {self.direction}")
-        
+
         self.move_counter += 1
         if self.move_counter >= self.move_threshold:
             # Check if player is in safe zone (near edges)
-            player_cell = to_cell(player_pos)
-            is_player_safe = (player_cell.x < ENEMY_MARGIN or 
-                            player_cell.x >= NUM_CELLS - ENEMY_MARGIN or 
-                            player_cell.y < ENEMY_MARGIN or 
-                            player_cell.y >= NUM_CELLS - ENEMY_MARGIN)
+            player_head = to_cell(player_body[0])
+            is_player_safe = (player_head.x < ENEMY_MARGIN or 
+                            player_head.x >= NUM_CELLS - ENEMY_MARGIN or 
+                            player_head.y < ENEMY_MARGIN or 
+                            player_head.y >= NUM_CELLS - ENEMY_MARGIN)
             
-            # Only chase player if they're not in the safe zone
+            # Always try to find a valid move, whether player is in safe zone or not
+            found_valid_move = False
             if not is_player_safe:
-                self.choose_new_direction_toward_player(player_cell, margin=ENEMY_MARGIN)
-            self.choose_safe_direction_if_needed()
+                # Try to chase player if they're not in safe zone
+                found_valid_move = self.choose_new_direction_toward_player(player_head, player_body, margin=ENEMY_MARGIN)
 
-            # Final pre-move safety guard
-            head = to_cell(self.body[0])
-            if not self._is_next_move_onscreen(head.x, head.y, self.direction, margin=ENEMY_MARGIN):
-                for turn_dir in [Vector2(1,0), Vector2(-1,0), Vector2(0,1), Vector2(0,-1)]:
-                    if (turn_dir != -self.direction and
-                        self._is_next_move_onscreen(head.x, head.y, turn_dir, margin=ENEMY_MARGIN)):
-                        print_debug("enemy", f"[COURSE CORRECTION] Forced turn from {self.direction} to {turn_dir}")
-                        self.direction = turn_dir
-                        self.facing_horizontally = (self.direction.y == 0)
-                        break
-
-            self.move()
+            # If we couldn't find a valid move toward player (or player is in safe zone),
+            # try to find ANY valid move
+            if not found_valid_move:
+                result = self.choose_safe_direction_if_needed(player_body)
+                if result is True:
+                    return True  # Player should be rewarded - enemy trapped
+            
+            # Move the snake and check for wall collision
+            wall_collision = self.move(player_body)
+            if wall_collision:
+                return True  # Player should be rewarded - enemy hit wall
+            
             self.move_counter = 0
+
+        # target_length = min(ENEMY_MAX_SIZE, target_length)
 
         # Only grow if we have at least one body segment
         if self.body:
@@ -1113,6 +1150,10 @@ class EnemySnake:
 
     @staticmethod
     def _generate_enemy_snake_offscreen(side, length):
+
+        # Cap the enemy snake length at max size when spawning
+        # capped_length = min(ENEMY_MAX_SIZE, length)
+
         direction_map = {
             "left": Vector2(1, 0),
             "right": Vector2(-1, 0),
@@ -1212,7 +1253,7 @@ class Game:
         self.enemy_snake = None  # will hold an EnemySnake instance or None
         self.enable_enemy_snake = True  # Toggle this off to disable enemy logic
         self.player_entry_side = None
-        self.smoke_effects = []  # List of dicts: {"pos": Vector2, "timer": int}
+        self.smoke_effects = []  # List of dicts: {"pos": Vector2, "timer": int, "initial": int}
         self.penalty_points = 0  # Track total penalty points
 
         # Visuals
@@ -1262,6 +1303,8 @@ class Game:
         self.enemy_snake = None
         self.player_entry_side = None
         self.penalty_points = 0
+        self.smoke_effects = []
+        self.last_enemy_spawn_time = pygame.time.get_ticks() # Timestamp ("Now") of last enemy spawn
 
         # Game progress
         self.start_time = pygame.time.get_ticks()
@@ -1301,9 +1344,6 @@ class Game:
         self.last_bonus_spawn_time = pygame.time.get_ticks() # Timestamp ("Now") of last bonus spawn
 
         self.popups = []
-
-        # Enemy state
-        self.last_enemy_spawn_time = pygame.time.get_ticks() # Timestamp ("Now") of last enemy spawn
 
         # Clean up food voice queue (prevent leftover playback from prior session)
         self.food_voice_queue.clear()
@@ -1388,28 +1428,51 @@ class Game:
         
         if self.enable_enemy_snake and self.enemy_snake:
             player_head = to_cell(self.snake.body[0])
-            self.enemy_snake.update(len(self.snake.body), player_head)
-            self.check_player_enemy_collision()
+            result = self.enemy_snake.update(len(self.snake.body), self.snake.body)
+            
+            # Check if enemy snake died by hitting player or itself
+            if result is True:  # Enemy died, reward player
+                reward = self.level
+                self.score += reward
+                
+                # Create reward popup
+                if hasattr(self.enemy_snake, '_death_position'):
+                    px = self.enemy_snake._death_position.x * CELL_SIZE
+                    py = self.enemy_snake._death_position.y * CELL_SIZE + HUD_HEIGHT
+                    self.popups.append({
+                        "text": f"+{reward}",
+                        "color": WHITE,
+                        "position": (px + CELL_SIZE // 2, py + CELL_SIZE // 2),
+                        "timer": EFFECT_LIFETIME_LONG
+                    })
+                    self.bonus_sound.play()  # Play reward sound effect
+            
+        self.check_player_enemy_collision() # Still check if player hit enemy
 
-            # Check if the enemy snake has been removed from the game.
-            if self.enemy_snake and not self.enemy_snake.body:
-                if hasattr(self.enemy_snake, "_death_position"):
-                    self.smoke_effects.append({"pos": self.enemy_snake._death_position, "timer": 60})
-                print_debug("enemy", f"Enemy snake moved offscreen and died at {self.enemy_snake._death_position}.")
-                self.enemy_snake = None
+        # Check if the enemy snake has been removed from the game.
+        if self.enemy_snake and not self.enemy_snake.body:
+            if hasattr(self.enemy_snake, "_death_position"):
+                self.smoke_effects.append({"pos": self.enemy_snake._death_position, 
+                                            "timer": EFFECT_LIFETIME_LONG, 
+                                            "initial": EFFECT_LIFETIME_LONG})
+
+            print_debug("enemy", f"Enemy snake moved offscreen and died at {self.enemy_snake._death_position}.")
+            self.enemy_snake = None
 
         if (self.enable_enemy_snake and
             (self.enemy_snake is None or not self.enemy_snake.body) and 
             time_since_last_enemy >= ENEMY_SPAWN_INTERVAL and
             not self.transitioning):
                 
-            print(f"[DEBUG] Enemy check triggered after {time_since_last_bonus} ms")
-            self.last_bonus_spawn_time = current_time  # Reset timer
+            print(f"[DEBUG] Enemy check triggered after {time_since_last_enemy} ms")
+            self.last_enemy_spawn_time = current_time  # Reset timer
 
             random_roll_for_enemy = random.random()
             print(f"[DEBUG] Random roll for enemy: {random_roll_for_enemy:.3f}")
 
             if random_roll_for_enemy <= ENEMY_SPAWN_PROBABILITY:
+                print_debug("enemy", f"[SPAWN PROBABILITY DEBUG] random_roll_for_enemy={random_roll_for_enemy:.3f} <= ENEMY_SPAWN_PROBABILITY={ENEMY_SPAWN_PROBABILITY}")
+                print("[DEBUG] Enemy will spawn.")
                 available_sides = ["left", "right", "top", "bottom"]
                 if self.player_entry_side in available_sides:
                     available_sides.remove(self.player_entry_side)
@@ -1476,10 +1539,6 @@ class Game:
                 food_sound_duration_ms = int(next_sound.get_length() * 1000)
                 pygame.time.set_timer(RESTORE_VOLUME_AFTER_FOOD_SOUND, food_sound_duration_ms, loops=1)
 
-        # Update smoke effect timers and remove finished ones
-        for effect in self.smoke_effects:
-            effect["timer"] -= 1
-        self.smoke_effects = [e for e in self.smoke_effects if e["timer"] > 0]
 # endregion
 
     def check_food(self):
@@ -1560,7 +1619,9 @@ class Game:
                 if enemy_segment.x == player_head.x and enemy_segment.y == player_head.y:
                     collision_location = enemy_segment
                     print_debug("enemy", f"Enemy snake died at {collision_location}.")
-                    self.smoke_effects.append({"pos": collision_location, "timer": 10})
+                    self.smoke_effects.append({"pos": collision_location, 
+                                               "timer": EFFECT_LIFETIME_LONG, 
+                                               "initial": EFFECT_LIFETIME_LONG})
                     penalty = self.level
                     self.score -= penalty
                     self.penalty_points += penalty
@@ -1573,7 +1634,7 @@ class Game:
                         "text": f"-{self.level}",
                         "color": RED,
                         "position": popup_pos,
-                        "timer": 60
+                        "timer": EFFECT_LIFETIME_LONG
                         })
                     
                     self.penalty_sound.play()
@@ -1651,13 +1712,15 @@ class Game:
             py = effect["pos"].y * CELL_SIZE + HUD_HEIGHT
 
             # How many frames left before smoke puff circle disappears
+            initial = effect.get("initial")
             time_left = effect["timer"]
-            max_time = 20
-            shrink_factor = time_left / max_time
+            shrink_factor = time_left / initial
+            shrink_factor = max(0, min(1.0, shrink_factor))   # clamp to [0, 1]
 
             # Radius of the smoke puff circle (starts large, shrinks to 0)
             base_radius = CELL_SIZE * 5.0
             radius = int(base_radius * shrink_factor)
+            radius = max(0, min(radius, int(base_radius)))
 
             # Alpha controls transparency of smoke puff circle
             # It’s the 4th value in an RGBA color tuple (Red, Green, Blue, Alpha)
@@ -1824,6 +1887,11 @@ class Game:
                 popup["timer"] -= 1
                 if popup["timer"] <= 0:
                     self.popups.remove(popup)
+
+            # Update smoke effect timers and remove finished ones
+        for effect in self.smoke_effects:
+            effect["timer"] -= 1
+        self.smoke_effects = [e for e in self.smoke_effects if e["timer"] > 0]
 
     def draw_score(self):
         # Draw HUD background
@@ -2028,6 +2096,7 @@ class Game:
 
         self.enemy_snake = None
         self.last_enemy_spawn_time = pygame.time.get_ticks()  # Optional, restart cooldown
+        self.smoke_effects = []
 
         previous_index = self.background_index
         while (new_index := random.randint(0, len(backgrounds) - 1)) == previous_index:
@@ -2282,7 +2351,7 @@ def main():
                                 CELL_SIZE
                             )
                             if bonus_rect.collidepoint(mouse_x, mouse_y):
-                                bonus_points = game.level + 1
+                                bonus_points = game.level
                                 game.score += bonus_points
                                 game.bonus_points += bonus_points
                                 game.bonus_sound.play()
@@ -2295,7 +2364,7 @@ def main():
                                     "text": f"+{bonus_points}",
                                     "color": WHITE,
                                     "position": (px + CELL_SIZE // 2, py + CELL_SIZE // 2),
-                                    "timer": 60  # Frames the popup will last (~1 second at 60 fps)
+                                    "timer": EFFECT_LIFETIME_LONG
                                     })
 
         if game.show_victory_screen:
