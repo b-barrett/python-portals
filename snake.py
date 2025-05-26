@@ -123,7 +123,7 @@ BONUS_LIFETIME_SEC = 5 # in seconds
 ENEMY_SPAWN_INTERVAL = 5000
 ENEMY_SPAWN_PROBABILITY = 1
 ENEMY_MARGIN = 4  # Number of cells from edge that enemy snakes avoid
-ENEMY_MAX_SIZE = 50
+ENEMY_MAX_SIZE = None
 
 # Snake Eyes
 EYE_RADIUS = CELL_SIZE // 6 # Eye size is 1/6 of the snake's body segment
@@ -134,8 +134,8 @@ PUPIL_OFFSET = CELL_SIZE // 15 # Pupils can move within the eye by this amount
 # endregion
 
 
-# region UTILITY HELPERS
-# === UTILITY HELPERS ===
+# region UTILITY HELPERS AND ASSET LOADING
+# === UTILITY HELPERS AND ASSET LOADING ===
 
 DEBUG_ENABLED = True  # Global master switch
 
@@ -168,6 +168,18 @@ def print_debug(tag, msg):
     if now - last >= throttle:
         print(f"[{tag.upper()}] {msg}")
         _last_debug_times[tag] = now
+
+def to_cell(pos):
+    """Return a Vector2 with integer (grid-snapped) coordinates.
+    Accepts Vector2, tuple, or any object with .x and .y attributes.
+    """
+    if not isinstance(pos, Vector2):
+        raise TypeError(f"Expected Vector2, got {type(pos).__name__}")
+    return Vector2(int(pos.x), int(pos.y))
+
+def get_snake_head_cell(snake):
+    head = snake.body[0]
+    return Vector2(int(head.x), int(head.y))
 
 # Load and prepare images
 def load_image(path, size=None, use_alpha=False, transparency=None):
@@ -210,12 +222,6 @@ def load_yummy_sounds(directory):
         key = filename.lower().replace(" ", "_")
         sounds[key] = pygame.mixer.Sound(path)
     return sounds
-
-# endregion
-
-
-# region ASSET LOADING
-# === ASSET LOADING ===
 
 # Load available music options (one subfolder per music style)
 music_folder_root = "assets/music/levels_final"
@@ -290,8 +296,6 @@ HEAD_COLORS = [
     (112, 101, 52),  # Corroscale
 ]
 
-
-# === BACKGROUND IMAGE LOADING ===
 # For cleaner path handling later, consider switching from os.path and glob to pathlib.
 
 # Supported extensions (case-insensitive)
@@ -870,18 +874,6 @@ def draw_crown(surface, px, py):
             (right, crown_base_top)
         ])
 
-def to_cell(pos):
-    """Return a Vector2 with integer (grid-snapped) coordinates.
-    Accepts Vector2, tuple, or any object with .x and .y attributes.
-    """
-    if not isinstance(pos, Vector2):
-        raise TypeError(f"Expected Vector2, got {type(pos).__name__}")
-    return Vector2(int(pos.x), int(pos.y))
-
-def get_snake_head_cell(snake):
-    head = snake.body[0]
-    return Vector2(int(head.x), int(head.y))
-
 # endregion
 
 
@@ -1386,14 +1378,12 @@ class Game:
 
         print(f"[DEBUG] Speed mode set to {mode} → final level {self.final_level}")
 
-# endregion
-
     def load_portal_animation(self):
         PORTAL_SCALE = 2
         self.portal_frames = [
             load_image(f"assets/portals/portal_frame_{i}.png", 
-                       size=(int(CELL_SIZE*PORTAL_SCALE), 
-                             int(CELL_SIZE*PORTAL_SCALE)), use_alpha=True)
+                        size=(int(CELL_SIZE*PORTAL_SCALE), 
+                                int(CELL_SIZE*PORTAL_SCALE)), use_alpha=True)
             for i in range(9, 25)
         ]
         self.portal_frame_index = 0
@@ -1402,6 +1392,9 @@ class Game:
         # At 60 fps, each image frame runs for fps divided by tick_delay eg 60/3.75 = 16 fps. 
         # (for sprite sheet with 16 frames: 16 frames / 16 fps = 1 second animation cycle duration)
         self.portal_frame_tick_delay = 3.75
+
+# endregion
+
     
 # region GAME FLOW
     def update(self):
@@ -1539,8 +1532,173 @@ class Game:
                 food_sound_duration_ms = int(next_sound.get_length() * 1000)
                 pygame.time.set_timer(RESTORE_VOLUME_AFTER_FOOD_SOUND, food_sound_duration_ms, loops=1)
 
+    def game_over(self):
+        if self.game_over_already_ran:
+            return
+        self.game_over_already_ran = True
+
+        self.end_time = pygame.time.get_ticks()
+        if self.score > 0:
+            entry_timestamp = update_leaderboard(
+                self.player_name, self.score, len(self.snake.body), self.level, 
+                self.bonus_points, self.penalty_points, self.game_duration(),
+                self.tournament_mode)
+            self.highlight_entry_ts = entry_timestamp
+            
+            if self.tournament_mode and entry_timestamp:
+                save_active_leaderboard(
+                    self.player_name,
+                    load_active_leaderboard(self.player_name, tournament_mode=True),
+                    tournament_mode=True
+                    )
+        
+        pygame.mixer.music.fadeout(500)  # ⬅️ Stop music immediately
+        print("Game Over - resetting everything")
+        self.show_leaderboard = True
+
+    def game_duration(self):
+        if self.start_time is None or self.end_time is None:
+            return "N/A"
+        duration_ms = self.end_time - self.start_time
+        minutes = duration_ms // 60000
+        seconds = (duration_ms % 60000) // 1000
+        return f"{minutes}:{seconds:02}"
+
+    def spawn_bonus(self):
+        """Randomly spawn a bonus on the board."""
+        all_positions = [Vector2(x, y) for x in range(NUM_CELLS) for y in range(NUM_CELLS)]
+        available_positions = [pos for pos in all_positions if pos not in self.snake.body]
+
+        if available_positions:
+            self.bonus_position = random.choice(available_positions)
+            self.bonus_timer = int(BONUS_LIFETIME_SEC * (1000 / self.snake_speed_ms))
+            self.bonus_active = True
+
+    def start_level(self):
+        """Initialize a new level after transition while preserving snake length."""
+        pygame.mixer.music.fadeout(500) # Fade out over 0.5 seconds
+        track_path = get_level_track_path(self.music_folder, self.level)
+        print(f"Now playing: {track_path}")
+        pygame.mixer.music.load(track_path)
+        pygame.mixer.music.set_volume(1.0)
+        pygame.mixer.music.play(-1, fade_ms=1000)
+
+        self.enemy_snake = None
+        self.last_enemy_spawn_time = pygame.time.get_ticks()  # Optional, restart cooldown
+        self.smoke_effects = []
+
+        previous_index = self.background_index
+        while (new_index := random.randint(0, len(backgrounds) - 1)) == previous_index:
+            pass
+        self.background_index = new_index
+
+        self.background = backgrounds[self.background_index]
+        
+        snake_length = len(self.snake.body) # Store snake length before reset
+
+        if self.level > 1 and self.last_portal_position and self.last_portal_side:
+            x = self.last_portal_position.x
+            y = self.last_portal_position.y
+
+            if self.last_portal_side == "left":
+                starting_pos = Vector2(NUM_CELLS - 1, y)  # enter from right
+                direction = Vector2(-1, 0)
+            elif self.last_portal_side == "right":
+                starting_pos = Vector2(0, y)  # enter from left
+                direction = Vector2(1, 0)
+            elif self.last_portal_side == "top":
+                starting_pos = Vector2(x, NUM_CELLS - 1)  # enter from bottom
+                direction = Vector2(0, -1)
+            elif self.last_portal_side == "bottom":
+                starting_pos = Vector2(x, 0)  # enter from top
+                direction = Vector2(0, 1)
+            else:
+                print("[DEBUG] Unexpected self.last_portal_side. Defaulting to center spawn.")
+                starting_pos = Vector2(NUM_CELLS // 2, NUM_CELLS // 2)
+                direction = Vector2(1, 0)
+        else:
+            starting_pos = Vector2(NUM_CELLS // 2, NUM_CELLS // 2)
+            direction = Vector2(1, 0)
+
+        if self.level > 1 and self.last_portal_side in ("left", "right", "top", "bottom"):
+            portal_entry_map = {
+            "left": "right",
+            "right": "left",
+            "top": "bottom",
+            "bottom": "top"
+            }
+            self.player_entry_side = portal_entry_map.get(self.last_portal_side)
+        else:
+            self.player_entry_side = None
+
+        self.snake = Snake(self.head_color, self.snake_body_image)
+        self.snake.direction = direction
+        self.snake.last_direction = direction
+        self.snake.body = [starting_pos]
+        portal_side = getattr(self, "last_portal_side", "N/A")
+        print(f"[DEBUG] Snake spawned at {starting_pos} facing {direction} (opposite '{portal_side}' wall).")
+
+        # Build out the snake and enemysnake in lock step ie enemy snake length matched snake length
+        for i in range(1, snake_length):
+            segment_pos = starting_pos - direction * i
+            self.snake.body.append(segment_pos)
+
+        self.food_name, self.food_image = self.current_food()
+        self.food = Food(self.snake.body, self.food_image)
+        self.level_score = 0 
+        self.points_to_portal = 4 * self.level
+        self.food_point_value = self.level
+        self.portal_open = False
+        self.portal_position = None
+        pygame.time.set_timer(TICK, self.snake_speed_ms)
+        print(f"\U0001f680 Level {self.level} @ {self.snake_speed_ms}ms")
+
+    def show_victory(self):
+        """Display the Victory screen after completing level 21."""
+        self.transitioning = False  # Defensive: ensure level doesn’t accidentally start
+        if self.victory_start_time is None:
+            self.victory_start_time = pygame.time.get_ticks()
+            self.victory_extra = 88
+            self.score += self.victory_extra
+            self.portal_sound.play()
+            print(f"[DEBUG] Triggered victory screen at {self.victory_start_time}")
+            return
+
+        victory_y = SCREEN_SIZE // 4
+
+        # Determine final top speed after one more level
+        final_speed_ms = self.snake_speed_ms - self.speed_delta
+        moves_per_sec = round(1000 / final_speed_ms, 2)
+
+        lines = [
+            "You entered the final portal!",
+            "Snake is about to reach top speed",
+            f"— {moves_per_sec} moves per second —",
+            "too fast for the human brain to track.",
+            "Luckily, you've achieved immortality.",
+            f"Immortality bonus: {self.victory_extra} points",
+            f"Final Score: {self.score} points"
+        ]
+
+        screen.fill(WHITE)
+
+        for i, line in enumerate(lines):
+            rendered = FONTS.body_large.render(line, True, BLACK)
+            screen.blit(rendered, rendered.get_rect(center=(
+                SCREEN_SIZE // 2, victory_y + i * (SCREEN_SIZE // 15)))
+                )
+
+        pygame.display.update()
+
+        # After 15 seconds, go to leaderboard
+        elapsed = pygame.time.get_ticks() - self.victory_start_time
+        print(f"[DEBUG] Victory screen shown for {elapsed} ms")
+        if elapsed >= 15000:
+            self.game_over()
+            self.show_victory_screen = False
 # endregion
 
+# region EVENTS
     def check_food(self):
         """Check if the snake has eaten food and handle accordingly."""
         if self.snake.body[0] == self.food.position:
@@ -1567,6 +1725,13 @@ class Game:
             # Open portal when reaching required points in the current level
             if not self.portal_open and self.level_score >= self.points_to_portal:
                 self.generate_random_portal()
+
+    def current_food(self):
+        """Return a random (food name, food image) pair."""
+        index = random.randint(0, len(food_images) - 1)
+        image = food_images[index]
+        name = os.path.splitext(os.path.basename(valid_food_paths[index]))[0].lower()
+        return name, image
 
     def check_collisions_and_portals(self):
         hx, hy = get_snake_head_cell(self.snake)
@@ -1659,50 +1824,55 @@ class Game:
             return "top"
         elif pos.y == NUM_CELLS - 1:
             return "bottom"
-
-
-    def game_over(self):
-        if self.game_over_already_ran:
-            return
-        self.game_over_already_ran = True
-
-        self.end_time = pygame.time.get_ticks()
-        if self.score > 0:
-            entry_timestamp = update_leaderboard(
-                self.player_name, self.score, len(self.snake.body), self.level, 
-                self.bonus_points, self.penalty_points, self.game_duration(),
-                self.tournament_mode)
-            self.highlight_entry_ts = entry_timestamp
-            
-            if self.tournament_mode and entry_timestamp:
-                save_active_leaderboard(
-                    self.player_name,
-                    load_active_leaderboard(self.player_name, tournament_mode=True),
-                    tournament_mode=True
-                    )
         
-        pygame.mixer.music.fadeout(500)  # ⬅️ Stop music immediately
-        print("Game Over - resetting everything")
-        self.show_leaderboard = True
+    def generate_random_portal(self):
+        """Generate a portal at a random position along the game boundary not occupied by food."""
+        attempts = 0
+        while True:
+            wall = random.choice(["top", "bottom", "left", "right"])
+            if wall == "top":
+                x = random.randint(1, NUM_CELLS - 2)
+                y = 0
+            elif wall == "bottom":
+                x = random.randint(1, NUM_CELLS - 2)
+                y = NUM_CELLS - 1
+            elif wall == "left":
+                x = 0
+                y = random.randint(1, NUM_CELLS - 2)
+            else:
+                x = NUM_CELLS - 1
+                y = random.randint(1, NUM_CELLS - 2)
 
-    def game_duration(self):
-        if self.start_time is None or self.end_time is None:
-            return "N/A"
-        duration_ms = self.end_time - self.start_time
-        minutes = duration_ms // 60000
-        seconds = (duration_ms % 60000) // 1000
-        return f"{minutes}:{seconds:02}"
+            portal_position = Vector2(x, y)
+            if portal_position != self.food.position:
 
-    def spawn_bonus(self):
-        """Randomly spawn a bonus on the board."""
-        all_positions = [Vector2(x, y) for x in range(NUM_CELLS) for y in range(NUM_CELLS)]
-        available_positions = [pos for pos in all_positions if pos not in self.snake.body]
+                self.portal_position = portal_position # portal position in current level
+                self.portal_open = True
 
-        if available_positions:
-            self.bonus_position = random.choice(available_positions)
-            self.bonus_timer = int(BONUS_LIFETIME_SEC * (1000 / self.snake_speed_ms))
-            self.bonus_active = True
+                # Store portal metadata for use in next level spawn
+                self.last_portal_position = portal_position # "saved copy" of most recent portal position 
+                self.last_portal_side = wall
 
+                print(f"\U0001f6aa Portal spawned at ({x}, {y})")
+                break
+
+            attempts += 1
+            if attempts > 3:
+                print("⚠️ Did not find portal position not occupied by food after 3 tries (~1 in 72 million)")
+                self.portal_position = portal_position # portal and food overlap
+                self.portal_open = True
+                self.last_portal_position = portal_position
+                self.last_portal_side = wall
+                break  
+
+        if attempts > 0 and self.portal_open:
+            print(f"🔁 Portal placement took {attempts} additional attempt{'s' if attempts != 1 else ''}")
+
+# endregion
+
+
+# region DRAWING
+# === DRAWING ===
     def draw_smoke_effects(self, surface):
 
         for effect in self.smoke_effects:
@@ -2042,179 +2212,6 @@ class Game:
             center=(SCREEN_SIZE // 2, SCREEN_SIZE + HUD_HEIGHT - INSTRUCTION_MARGIN_BOTTOM))
         screen.blit(instructions_text_2, instructions_rect_2)
 
-    def generate_random_portal(self):
-        """Generate a portal at a random position along the game boundary not occupied by food."""
-        attempts = 0
-        while True:
-            wall = random.choice(["top", "bottom", "left", "right"])
-            if wall == "top":
-                x = random.randint(1, NUM_CELLS - 2)
-                y = 0
-            elif wall == "bottom":
-                x = random.randint(1, NUM_CELLS - 2)
-                y = NUM_CELLS - 1
-            elif wall == "left":
-                x = 0
-                y = random.randint(1, NUM_CELLS - 2)
-            else:
-                x = NUM_CELLS - 1
-                y = random.randint(1, NUM_CELLS - 2)
-
-            portal_position = Vector2(x, y)
-            if portal_position != self.food.position:
-
-                self.portal_position = portal_position # portal position in current level
-                self.portal_open = True
-
-                # Store portal metadata for use in next level spawn
-                self.last_portal_position = portal_position # "saved copy" of most recent portal position 
-                self.last_portal_side = wall
-
-                print(f"\U0001f6aa Portal spawned at ({x}, {y})")
-                break
-
-            attempts += 1
-            if attempts > 3:
-                print("⚠️ Did not find portal position not occupied by food after 3 tries (~1 in 72 million)")
-                self.portal_position = portal_position # portal and food overlap
-                self.portal_open = True
-                self.last_portal_position = portal_position
-                self.last_portal_side = wall
-                break  
-
-        if attempts > 0 and self.portal_open:
-            print(f"🔁 Portal placement took {attempts} additional attempt{'s' if attempts != 1 else ''}")
-
-    def start_level(self):
-        """Initialize a new level after transition while preserving snake length."""
-        pygame.mixer.music.fadeout(500) # Fade out over 0.5 seconds
-        track_path = get_level_track_path(self.music_folder, self.level)
-        print(f"Now playing: {track_path}")
-        pygame.mixer.music.load(track_path)
-        pygame.mixer.music.set_volume(1.0)
-        pygame.mixer.music.play(-1, fade_ms=1000)
-
-        self.enemy_snake = None
-        self.last_enemy_spawn_time = pygame.time.get_ticks()  # Optional, restart cooldown
-        self.smoke_effects = []
-
-        previous_index = self.background_index
-        while (new_index := random.randint(0, len(backgrounds) - 1)) == previous_index:
-            pass
-        self.background_index = new_index
-
-        self.background = backgrounds[self.background_index]
-        
-        snake_length = len(self.snake.body) # Store snake length before reset
-
-        if self.level > 1 and self.last_portal_position and self.last_portal_side:
-            x = self.last_portal_position.x
-            y = self.last_portal_position.y
-
-            if self.last_portal_side == "left":
-                starting_pos = Vector2(NUM_CELLS - 1, y)  # enter from right
-                direction = Vector2(-1, 0)
-            elif self.last_portal_side == "right":
-                starting_pos = Vector2(0, y)  # enter from left
-                direction = Vector2(1, 0)
-            elif self.last_portal_side == "top":
-                starting_pos = Vector2(x, NUM_CELLS - 1)  # enter from bottom
-                direction = Vector2(0, -1)
-            elif self.last_portal_side == "bottom":
-                starting_pos = Vector2(x, 0)  # enter from top
-                direction = Vector2(0, 1)
-            else:
-                print("[DEBUG] Unexpected self.last_portal_side. Defaulting to center spawn.")
-                starting_pos = Vector2(NUM_CELLS // 2, NUM_CELLS // 2)
-                direction = Vector2(1, 0)
-        else:
-            starting_pos = Vector2(NUM_CELLS // 2, NUM_CELLS // 2)
-            direction = Vector2(1, 0)
-
-        if self.level > 1 and self.last_portal_side in ("left", "right", "top", "bottom"):
-            portal_entry_map = {
-            "left": "right",
-            "right": "left",
-            "top": "bottom",
-            "bottom": "top"
-            }
-            self.player_entry_side = portal_entry_map.get(self.last_portal_side)
-        else:
-            self.player_entry_side = None
-
-        self.snake = Snake(self.head_color, self.snake_body_image)
-        self.snake.direction = direction
-        self.snake.last_direction = direction
-        self.snake.body = [starting_pos]
-        portal_side = getattr(self, "last_portal_side", "N/A")
-        print(f"[DEBUG] Snake spawned at {starting_pos} facing {direction} (opposite '{portal_side}' wall).")
-
-        # Build out the snake and enemysnake in lock step ie enemy snake length matched snake length
-        for i in range(1, snake_length):
-            segment_pos = starting_pos - direction * i
-            self.snake.body.append(segment_pos)
-
-        self.food_name, self.food_image = self.current_food()
-        self.food = Food(self.snake.body, self.food_image)
-        self.level_score = 0 
-        self.points_to_portal = 4 * self.level
-        self.food_point_value = self.level
-        self.portal_open = False
-        self.portal_position = None
-        pygame.time.set_timer(TICK, self.snake_speed_ms)
-        print(f"\U0001f680 Level {self.level} @ {self.snake_speed_ms}ms")
-
-    def current_food(self):
-        """Return a random (food name, food image) pair."""
-        index = random.randint(0, len(food_images) - 1)
-        image = food_images[index]
-        name = os.path.splitext(os.path.basename(valid_food_paths[index]))[0].lower()
-        return name, image
-    
-    def show_victory(self):
-        """Display the Victory screen after completing level 21."""
-        self.transitioning = False  # Defensive: ensure level doesn’t accidentally start
-        if self.victory_start_time is None:
-            self.victory_start_time = pygame.time.get_ticks()
-            self.victory_extra = 88
-            self.score += self.victory_extra
-            self.portal_sound.play()
-            print(f"[DEBUG] Triggered victory screen at {self.victory_start_time}")
-            return
-
-        victory_y = SCREEN_SIZE // 4
-
-        # Determine final top speed after one more level
-        final_speed_ms = self.snake_speed_ms - self.speed_delta
-        moves_per_sec = round(1000 / final_speed_ms, 2)
-
-        lines = [
-            "You entered the final portal!",
-            "Snake is about to reach top speed",
-            f"— {moves_per_sec} moves per second —",
-            "too fast for the human brain to track.",
-            "Luckily, you've achieved immortality.",
-            f"Immortality bonus: {self.victory_extra} points",
-            f"Final Score: {self.score} points"
-        ]
-
-        screen.fill(WHITE)
-
-        for i, line in enumerate(lines):
-            rendered = FONTS.body_large.render(line, True, BLACK)
-            screen.blit(rendered, rendered.get_rect(center=(
-                SCREEN_SIZE // 2, victory_y + i * (SCREEN_SIZE // 15)))
-                )
-
-        pygame.display.update()
-
-        # After 15 seconds, go to leaderboard
-        elapsed = pygame.time.get_ticks() - self.victory_start_time
-        print(f"[DEBUG] Victory screen shown for {elapsed} ms")
-        if elapsed >= 15000:
-            self.game_over()
-            self.show_victory_screen = False
-
 # endregion
 
 
@@ -2386,6 +2383,7 @@ def main():
         clock.tick(60)
 
 # endregion
+
 
 if __name__ == "__main__":
     main()
