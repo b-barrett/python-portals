@@ -1,5 +1,5 @@
-# region SYSTEM SETUP (IMPORTS & INIT)
-# === SYSTEM SETUP (IMPORTS & INIT) ===
+# region SYSTEM SETUP
+# === SYSTEM SETUP ===
 
 # Standard library
 import datetime
@@ -35,6 +35,7 @@ pygame.mixer.init()
 pygame.mixer.set_reserved(4) # see: self.food_voice_channel = pygame.mixer.Channel(4)
 
 # endregion SYSTEM SETUP
+
 
 # region CONSTANTS & CONFIG
 # === CONSTANTS & CONFIG ===
@@ -181,6 +182,12 @@ def get_snake_head_cell(snake):
     head = snake.body[0]
     return Vector2(int(head.x), int(head.y))
 
+# endregion UTILITY HELPERS
+
+
+# region ASSET LOADING
+# === ASSET LOADING ===
+
 # Load and prepare images
 def load_image(path, size=None, use_alpha=False, transparency=None):
     """
@@ -203,17 +210,6 @@ def load_image(path, size=None, use_alpha=False, transparency=None):
         optimized.set_alpha(transparency)
     return optimized
 
-# Sort by the numeric suffix (01, 02, ...)
-def extract_suffix(path):
-    """Extract numeric suffix from filename like 'texture-01.png' or 'texture-01.jpg'."""
-    match = re.search(r"-(\d{2})\.(png|jpe?g)$", os.path.basename(path), re.IGNORECASE)
-    return int(match.group(1)) if match else 0
-
-def extract_fruit_index(path):
-    """Extract the fruit index from a file path."""
-    match = re.search(r"fruit_(\d+)\.png$", os.path.basename(path))
-    return int(match.group(1)) if match else None
-
 def load_yummy_sounds(directory):
     """Load all WAV files from the given directory and return a dict keyed by base name."""
     sounds = {}
@@ -242,7 +238,6 @@ voice_pack_paths = [
 ]
 voice_pack_paths.sort()
 voice_pack_names = [os.path.basename(path) for path in voice_pack_paths]
-
 
 def get_preview_track(folder_path):
     candidates = glob.glob(os.path.join(folder_path, "*level01.ogg"))
@@ -316,145 +311,10 @@ for ext in supported_exts:
 if not background_files:
     raise FileNotFoundError("❌ No background images found in supported formats.")
 
-# Sort by suffix (e.g., file-01.png, file-02.jpg) or fallback to alphabetical
-background_files = sorted(background_files, key=extract_suffix)
-
-# Load and scale backgrounds
-backgrounds = [
-    load_image(path, (SCREEN_SIZE, SCREEN_SIZE + HUD_HEIGHT), use_alpha=True)
-    for path in background_files
-]
-
-# Get all .png files in assets/food/food64
-all_food_paths = glob.glob("assets/food/food64/*.png")
-
-# Sort them alphabetically by filename
-valid_food_paths = sorted(all_food_paths, key=lambda p: os.path.basename(p).lower())
-
-# Load each image
-food_images = [
-    load_image(path, size=(CELL_SIZE, CELL_SIZE), use_alpha=True)
-    for path in valid_food_paths
-]
-
-# endregion UTILITY HELPERS
-
-
-# region ASSET LOADING
-# === ASSET LOADING ===
-
-# Sort by the numeric suffix (01, 02, ...)
 def extract_suffix(path):
     """Extract numeric suffix from filename like 'texture-01.png' or 'texture-01.jpg'."""
     match = re.search(r"-(\d{2})\.(png|jpe?g)$", os.path.basename(path), re.IGNORECASE)
     return int(match.group(1)) if match else 0
-
-def extract_fruit_index(path):
-    """Extract the fruit index from a file path."""
-    match = re.search(r"fruit_(\d+)\.png$", os.path.basename(path))
-    return int(match.group(1)) if match else None
-
-def load_yummy_sounds(directory):
-    """Load all WAV files from the given directory and return a dict keyed by base name."""
-    sounds = {}
-    for path in glob.glob(os.path.join(directory, "*.wav")):
-        filename = os.path.splitext(os.path.basename(path))[0]
-        key = filename.lower().replace(" ", "_")
-        sounds[key] = pygame.mixer.Sound(path)
-    return sounds
-
-# Load available music options (one subfolder per music style)
-music_folder_root = "assets/music/levels_final"
-music_folder_paths = [
-    os.path.join(music_folder_root, name)
-    for name in os.listdir(music_folder_root)
-    if os.path.isdir(os.path.join(music_folder_root, name))
-]
-music_folder_paths.sort()  # Optional alphabetical sorting
-music_folder_names = [os.path.basename(path) for path in music_folder_paths]
-
-# Load available food voice options (one subfolder per food voice)
-voice_pack_root = "assets/sounds"
-voice_pack_paths = [
-    os.path.join(voice_pack_root, name)
-    for name in os.listdir(voice_pack_root)
-    if os.path.isdir(os.path.join(voice_pack_root, name))
-]
-voice_pack_paths.sort()
-voice_pack_names = [os.path.basename(path) for path in voice_pack_paths]
-
-
-def get_preview_track(folder_path):
-    candidates = glob.glob(os.path.join(folder_path, "*level01.ogg"))
-    if not candidates:
-        raise FileNotFoundError(f"No preview track found in: {folder_path}")
-    return candidates[0]  # Return the first match
-
-def get_level_track_path(folder_path, level_number):
-    """Returns the first matching *_levelXX.ogg file in the selected folder."""
-    pattern = f"*level{level_number:02}.ogg"
-    matches = glob.glob(os.path.join(folder_path, pattern))
-    if not matches:
-        raise FileNotFoundError(f"No music file found for level {level_number} in {folder_path}")
-    return matches[0]  # Use first match: level 1
-
-# Load skin, sorted alphabetically by number (file prefix: 01_, 02_, ..., 14_)
-skin_files = sorted(glob.glob("assets/snakeskins/*.png"))
-
-# Correct fantasy names for each skin, matching alphabetical file order
-skin_names = [
-    "Brickback",
-    "Dragonscale",
-    "Emberlash",
-    "Serpentleaf",
-    "Bloodhide",
-    "Midnight Denim",
-    "Rootscale",
-    "Rusthide",
-    "King Cobra",
-    "Rocktongue",
-    "Pitgold",
-    "Glaciercoil",
-    "Marbled Viper",
-    "Corroscale"
-]
-
-HEAD_COLORS = [
-    (162, 84, 77),  # Brickback
-    (154, 111, 73),  # Dragonscale
-    (171, 94, 45),  # Emberlash
-    (76, 151, 53),  # Serpentleaf
-    (89, 59, 57),  # Bloodhide
-    (67, 75, 83),  # Midnight Denim
-    (114, 94, 80),  # Rootscale
-    (121, 74, 69),  # Rusthide
-    (102, 100, 99),  # Zebrastrike
-    (148, 147, 147),  # Rocktongue
-    (117, 104, 85),  # Pitgold
-    (59, 210, 202),  # Glaciercoil
-    (162, 163, 175),  # Marbled Viper
-    (112, 101, 52),  # Corroscale
-]
-
-# For cleaner path handling later, consider switching from os.path and glob to pathlib.
-
-# Supported extensions (case-insensitive)
-supported_exts = ["png", "PNG", "jpg", "JPG", "jpeg", "JPEG"]
-
-# Collect matching files for each extension
-background_files_by_ext = {
-    ext: glob.glob(f"assets/backgrounds/Textures/*.{ext}")
-    for ext in supported_exts
-}
-
-# Combine all files into one list
-background_files = []
-for ext in supported_exts:
-    files = background_files_by_ext[ext]
-    background_files.extend(files)
-
-if not background_files:
-    raise FileNotFoundError("❌ No background images found in supported formats.")
 
 # Sort by suffix (e.g., file-01.png, file-02.jpg) or fallback to alphabetical
 background_files = sorted(background_files, key=extract_suffix)
@@ -658,8 +518,8 @@ def merge_named_leaderboards():
 # endregion LEADERBOARD LOGIC
 
 
-# region UI SCREENS & PLAYER SETUP
-# === UI SCREENS & PLAYER SETUP ===
+# region UI & PLAYER SETUP
+# === UI & PLAYER SETUP ===
 
 def initialize_game_session():
     player_name, snake_skin, skin_index, selected_music_index, selected_voice_index, selected_speed, voice_enabled, tournament_mode = prompt_player_name_skin_music_voice_speed()
@@ -916,109 +776,11 @@ def show_instructions_screen(game):
             if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
                 return
 
-# endregion UI SCREENS & PLAYER SETUP
+# endregion UI & PLAYER SETUP
 
 
-# region CLASS HELPER FUNCTIONS
-# === CLASS HELPER FUNCTIONS ===
-
-def draw_eyes(surface, head_x, head_y, direction):
-    """
-    Draws two eyes and their pupils on a snake head at pixel coords (head_x, head_y).
-    direction is a Vector2 indicating movement.
-    """
-
-    left_eye_center = (
-        int(head_x + EYE_OFFSET),
-        int(head_y + CELL_SIZE - EYE_OFFSET) if direction.y == 1 else int(head_y + EYE_OFFSET)
-    )
-
-    right_eye_center = (
-        int(head_x + CELL_SIZE - EYE_OFFSET),
-        int(head_y + CELL_SIZE - EYE_OFFSET) if direction.y == 1 else int(head_y + EYE_OFFSET)
-    )
-
-    # Draw eyes
-    pygame.draw.circle(surface, WHITE, left_eye_center, EYE_RADIUS)
-    pygame.draw.circle(surface, WHITE, right_eye_center, EYE_RADIUS)
-
-    # Calculate pupil direction based on snake's direction
-    dir_x = int(direction.x * PUPIL_OFFSET)
-    dir_y = int(direction.y * PUPIL_OFFSET)
-
-    # Draw pupils
-    left_eye_center = (left_eye_center[0] + dir_x, left_eye_center[1] + dir_y)
-    right_eye_center = (right_eye_center[0] + dir_x, right_eye_center[1] + dir_y)
-    
-    pygame.draw.circle(surface, BLACK, left_eye_center, PUPIL_RADIUS)
-    pygame.draw.circle(surface, BLACK, right_eye_center, PUPIL_RADIUS)
-
-def draw_crown_base(surface, px, py, vertical_align="center"):
-    """
-    Draw just the crown base rectangle (no spikes).
-    - `px`, `py` is top-left coordinate of the snake head.
-    - `vertical_align`: 'top', 'bottom', or 'center' of the head.
-    """
-    base_width_factor = 1.0 # Multiplier of CELL_SIZE
-    base_height = int(CELL_SIZE * 1/5) # Vertical height of crown base (in pixels)
-    crown_width = int(CELL_SIZE * base_width_factor)
-    
-    # centers crowns on head: if crown_width == CELL_SIZE, then crown_left_x = px
-    crown_left_x = px - (crown_width - CELL_SIZE) // 2
-
-    # Compute crown base vertical position
-    if vertical_align == "top":
-        base_top = py  # flush with top of head
-        base_bottom = base_top + base_height
-    elif vertical_align == "bottom":
-        base_bottom = py + CELL_SIZE  # flush with bottom of head
-        base_top = base_bottom - base_height
-    else:
-        raise ValueError("vertical_align must be 'top' or 'bottom'")
-
-    base_rect = pygame.Rect(
-        crown_left_x, base_top,
-        crown_width, base_height
-    )
-    pygame.draw.rect(surface, GOLD, base_rect)
-
-def draw_crown(surface, px, py):
-    """Draw a gold crown above the snake's head at pixel coords (px, py)."""
-    # === CONFIGURABLE VALUES ===
-    base_width_factor = 1.0   # Multiplier of CELL_SIZE
-    base_height = int(CELL_SIZE * 1/5) # Vertical height of crown base (in pixels)
-    spike_height = int(CELL_SIZE * 1/3) # From Tip to top of crown base
-    num_spikes = 3 # Number of spikes
-    crown_width = int(CELL_SIZE * base_width_factor)
-    # note: px, py is top left x, y coord of snake head
-    crown_left_x = px - (crown_width - CELL_SIZE) // 2 # centers crowns on head: if crown_width == CELL_SIZE, then crown_x = px
-    crown_base_bottom_y = py  # Aligns the bottom of the crown with the top of the snake head
-    crown_base_top = crown_base_bottom_y - base_height
-    crown_top_y = crown_base_bottom_y - spike_height # tip of each spike to top of crown base
-
-    base_rect = pygame.Rect(
-        crown_left_x, crown_base_top,
-        crown_width, base_height
-    )
-    pygame.draw.rect(surface, GOLD, base_rect)
-
-    spike_spacing = crown_width // num_spikes
-    for i in range(num_spikes):
-        left = crown_left_x + i * spike_spacing
-        right = left + spike_spacing
-        tip = ((left + right) // 2, crown_top_y)
-
-        pygame.draw.polygon(surface, GOLD, [
-            (left, crown_base_top),
-            tip,
-            (right, crown_base_top)
-        ])
-
-# endregion CLASS HELPER FUNCTIONS
-
-
-# region SNAKE, ENEMY, FOOD CLASSES
-# === SNAKE, ENEMY FOOD CLASSES ===
+# region SNAKE CLASSES
+# === SNAKE CLASSES ===
 
 class Snake:
     
@@ -1360,13 +1122,113 @@ class EnemySnake:
             (head.y >= NUM_CELLS - 1 and dir == Vector2(0, 1))
         )
     
-# endregion SNAKE, ENEMY, FOOD CLASSES
+# endregion SNAKE CLASSES
+
+
+# region SNAKE CLASS HELPERS
+# === SNAKE CLASS HELPERS ===
+
+def draw_eyes(surface, head_x, head_y, direction):
+    """
+    Draws two eyes and their pupils on a snake head at pixel coords (head_x, head_y).
+    direction is a Vector2 indicating movement.
+    """
+
+    left_eye_center = (
+        int(head_x + EYE_OFFSET),
+        int(head_y + CELL_SIZE - EYE_OFFSET) if direction.y == 1 else int(head_y + EYE_OFFSET)
+    )
+
+    right_eye_center = (
+        int(head_x + CELL_SIZE - EYE_OFFSET),
+        int(head_y + CELL_SIZE - EYE_OFFSET) if direction.y == 1 else int(head_y + EYE_OFFSET)
+    )
+
+    # Draw eyes
+    pygame.draw.circle(surface, WHITE, left_eye_center, EYE_RADIUS)
+    pygame.draw.circle(surface, WHITE, right_eye_center, EYE_RADIUS)
+
+    # Calculate pupil direction based on snake's direction
+    dir_x = int(direction.x * PUPIL_OFFSET)
+    dir_y = int(direction.y * PUPIL_OFFSET)
+
+    # Draw pupils
+    left_eye_center = (left_eye_center[0] + dir_x, left_eye_center[1] + dir_y)
+    right_eye_center = (right_eye_center[0] + dir_x, right_eye_center[1] + dir_y)
+    
+    pygame.draw.circle(surface, BLACK, left_eye_center, PUPIL_RADIUS)
+    pygame.draw.circle(surface, BLACK, right_eye_center, PUPIL_RADIUS)
+
+def draw_crown_base(surface, px, py, vertical_align="center"):
+    """
+    Draw just the crown base rectangle (no spikes).
+    - `px`, `py` is top-left coordinate of the snake head.
+    - `vertical_align`: 'top', 'bottom', or 'center' of the head.
+    """
+    base_width_factor = 1.0 # Multiplier of CELL_SIZE
+    base_height = int(CELL_SIZE * 1/5) # Vertical height of crown base (in pixels)
+    crown_width = int(CELL_SIZE * base_width_factor)
+    
+    # centers crowns on head: if crown_width == CELL_SIZE, then crown_left_x = px
+    crown_left_x = px - (crown_width - CELL_SIZE) // 2
+
+    # Compute crown base vertical position
+    if vertical_align == "top":
+        base_top = py  # flush with top of head
+        base_bottom = base_top + base_height
+    elif vertical_align == "bottom":
+        base_bottom = py + CELL_SIZE  # flush with bottom of head
+        base_top = base_bottom - base_height
+    else:
+        raise ValueError("vertical_align must be 'top' or 'bottom'")
+
+    base_rect = pygame.Rect(
+        crown_left_x, base_top,
+        crown_width, base_height
+    )
+    pygame.draw.rect(surface, GOLD, base_rect)
+
+def draw_crown(surface, px, py):
+    """Draw a gold crown above the snake's head at pixel coords (px, py)."""
+    # === CONFIGURABLE VALUES ===
+    base_width_factor = 1.0   # Multiplier of CELL_SIZE
+    base_height = int(CELL_SIZE * 1/5) # Vertical height of crown base (in pixels)
+    spike_height = int(CELL_SIZE * 1/3) # From Tip to top of crown base
+    num_spikes = 3 # Number of spikes
+    crown_width = int(CELL_SIZE * base_width_factor)
+    # note: px, py is top left x, y coord of snake head
+    crown_left_x = px - (crown_width - CELL_SIZE) // 2 # centers crowns on head: if crown_width == CELL_SIZE, then crown_x = px
+    crown_base_bottom_y = py  # Aligns the bottom of the crown with the top of the snake head
+    crown_base_top = crown_base_bottom_y - base_height
+    crown_top_y = crown_base_bottom_y - spike_height # tip of each spike to top of crown base
+
+    base_rect = pygame.Rect(
+        crown_left_x, crown_base_top,
+        crown_width, base_height
+    )
+    pygame.draw.rect(surface, GOLD, base_rect)
+
+    spike_spacing = crown_width // num_spikes
+    for i in range(num_spikes):
+        left = crown_left_x + i * spike_spacing
+        right = left + spike_spacing
+        tip = ((left + right) // 2, crown_top_y)
+
+        pygame.draw.polygon(surface, GOLD, [
+            (left, crown_base_top),
+            tip,
+            (right, crown_base_top)
+        ])
+
+# endregion SNAKE CLASS HELPERS
 
 
 # region GAME CLASS
 # === GAME CLASS ===
 
 # region INIT & RESET
+# === INIT & RESET ===
+
 class Game:
     """Main game class that manages game state, updates, and rendering."""
     
@@ -1535,7 +1397,10 @@ class Game:
 
 # endregion INIT & RESET
 
-# region GAME FLOW
+
+# region FLOW
+# === FLOW ===
+
     def update(self):
         if self.game_over_already_ran or self.paused or self.show_victory_screen:
             return  # Do nothing if game_over() triggered, game paused, or victory message on screen
@@ -1794,7 +1659,7 @@ class Game:
 
     def show_victory(self):
         """Display the Victory screen after completing level 21."""
-        self.transitioning = False  # Defensive: ensure level doesn’t accidentally start
+        self.transitioning = False  # ensure level doesn’t accidentally start
         if self.victory_start_time is None:
             self.victory_start_time = pygame.time.get_ticks()
             self.victory_extra = 88
@@ -1835,9 +1700,12 @@ class Game:
         if elapsed >= 15000:
             self.game_over()
             self.show_victory_screen = False
-# endregion
+
+# endregion FLOW
+
 
 # region EVENTS
+# === EVENTS ===
     def check_food(self):
         """Check if the snake has eaten food and handle accordingly."""
         if self.snake.body[0] == self.food.position:
@@ -1907,9 +1775,9 @@ class Game:
             return
 
         if head.x < 0 or head.x >= NUM_CELLS or head.y < 0 or head.y >= NUM_CELLS:
-            print(f"[DEBUG] Wall collision at {head} — triggering game over")
+            print_debug("collision", f"Wall collision at {head} — triggering game over")
             if self.portal_open:
-                print(f"[DEBUG] Portal open at: {self.portal_position}")
+                print_debug("portal", f"Portal open at: {self.portal_position}")
             self.penalty_sound.play()
             self.game_over()
 
@@ -1953,16 +1821,6 @@ class Game:
         if head_pos in body_positions:
             self.penalty_sound.play()
             self.game_over()
-
-    def detect_wall_side(self, pos):
-        if pos.x == 0:
-            return "left"
-        elif pos.x == NUM_CELLS - 1:
-            return "right"
-        elif pos.y == 0:
-            return "top"
-        elif pos.y == NUM_CELLS - 1:
-            return "bottom"
         
     def generate_random_portal(self):
         """Generate a portal at a random position along the game boundary not occupied by food."""
@@ -2007,11 +1865,12 @@ class Game:
         if attempts > 0 and self.portal_open:
             print(f"🔁 Portal placement took {attempts} additional attempt{'s' if attempts != 1 else ''}")
 
-# endregion
+# endregion EVENTS
 
 
 # region DRAWING
 # === DRAWING ===
+
     def draw_smoke_effects(self, surface):
 
         for effect in self.smoke_effects:
@@ -2151,7 +2010,7 @@ class Game:
             # Get screen dimensions
             screen_width, screen_height = screen.get_size()
 
-            # Define gameplay area (exclude HUD)
+            # Gameplay area (exclude HUD)
             gameplay_top = HUD_HEIGHT
             gameplay_height = screen_height - HUD_HEIGHT
 
@@ -2273,7 +2132,7 @@ class Game:
         screen.blit(title_text, title_rect)
         screen.blit(trophy_emoji_surf, right_emoji_rect)
 
-        # Define headers and row keys for the leaderboard table
+        # Headers and row keys for the leaderboard table
         all_headers = ["Rank", "Name", "Pts", "Size", "Lvl", "Bns", "Pen", "Dur", "Date"]
 
         # Lambdas to extract data for each column from a leaderboard entry
@@ -2351,11 +2210,13 @@ class Game:
             center=(SCREEN_SIZE // 2, SCREEN_SIZE + HUD_HEIGHT - INSTRUCTION_MARGIN_BOTTOM))
         screen.blit(instructions_text_2, instructions_rect_2)
 
-# endregion FLOW
+# endregion DRAWING
+
+# endregion GAME CLASS
 
 
-# region GAME INITIALIZATION & MAIN LOOP
-# === GAME INITIALIZATION & MAIN LOOP ===
+# region INITIALIZATION & MAIN LOOP
+# === INITIALIZATION & MAIN LOOP ===
 
 def main():
     git_pull_leaderboard()

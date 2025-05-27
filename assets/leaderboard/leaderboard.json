@@ -11,6 +11,17 @@
         "duration": "4:24"
     },
     {
+        "name": "Ghost",
+        "score": 317,
+        "size": 46,
+        "date": "05/27/25",
+        "level": 10,
+        "bonus": 34,
+        "penalty": 20,
+        "ts": 1748351077.156223,
+        "duration": "3:44"
+    },
+    {
         "name": "Ben B.",
         "score": 304,
         "size": 65,
@@ -42,6 +53,17 @@
         "penalty": 24,
         "ts": 1748140074.265458,
         "duration": "5:41"
+    },
+    {
+        "name": "Lets Go",
+        "score": 94,
+        "size": 26,
+        "date": "05/27/25",
+        "level": 6,
+        "bonus": 7,
+        "penalty": 2,
+        "ts": 1748350822.008596,
+        "duration": "2:00"
     },
     {
         "name": "OK Then",
@@ -86,27 +108,5 @@
         "penalty": 0,
         "ts": 1748139261.956304,
         "duration": "2:36"
-    },
-    {
-        "name": "njretyu",
-        "score": 60,
-        "size": 18,
-        "date": "05/24/25",
-        "level": 4,
-        "bonus": 27,
-        "penalty": 11,
-        "ts": 1748104652.299304,
-        "duration": "4:55"
-    },
-    {
-        "name": "Ben B,",
-        "score": 57,
-        "size": 34,
-        "date": "05/26/25",
-        "level": 2,
-        "bonus": 5,
-        "penalty": 13,
-        "ts": 1748296996.758688,
-        "duration": "2:54"
     }
 ]
