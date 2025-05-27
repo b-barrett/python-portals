@@ -34,7 +34,7 @@ pygame.mixer.init()
 # Reserve channel 4 for food voices to avoid conflict with other sound effects
 pygame.mixer.set_reserved(4) # see: self.food_voice_channel = pygame.mixer.Channel(4)
 
-# endregion
+# endregion SYSTEM SETUP
 
 # region CONSTANTS & CONFIG
 # === CONSTANTS & CONFIG ===
@@ -131,11 +131,11 @@ EYE_OFFSET = CELL_SIZE // 4 # Eyes are positioned 1/4 of cell size from the edge
 PUPIL_RADIUS = CELL_SIZE // 15 # Pupil size is 1/15 of the cell size
 PUPIL_OFFSET = CELL_SIZE // 15 # Pupils can move within the eye by this amount
 
-# endregion
+# endregion CONSTANTS & CONFIG
 
 
-# region UTILITY HELPERS AND ASSET LOADING
-# === UTILITY HELPERS AND ASSET LOADING ===
+# region UTILITY HELPERS
+# === UTILITY HELPERS ===
 
 DEBUG_ENABLED = True  # Global master switch
 
@@ -337,7 +337,147 @@ food_images = [
     for path in valid_food_paths
 ]
 
-# endregion
+# endregion UTILITY HELPERS
+
+
+# region ASSET LOADING
+# === ASSET LOADING ===
+
+# Sort by the numeric suffix (01, 02, ...)
+def extract_suffix(path):
+    """Extract numeric suffix from filename like 'texture-01.png' or 'texture-01.jpg'."""
+    match = re.search(r"-(\d{2})\.(png|jpe?g)$", os.path.basename(path), re.IGNORECASE)
+    return int(match.group(1)) if match else 0
+
+def extract_fruit_index(path):
+    """Extract the fruit index from a file path."""
+    match = re.search(r"fruit_(\d+)\.png$", os.path.basename(path))
+    return int(match.group(1)) if match else None
+
+def load_yummy_sounds(directory):
+    """Load all WAV files from the given directory and return a dict keyed by base name."""
+    sounds = {}
+    for path in glob.glob(os.path.join(directory, "*.wav")):
+        filename = os.path.splitext(os.path.basename(path))[0]
+        key = filename.lower().replace(" ", "_")
+        sounds[key] = pygame.mixer.Sound(path)
+    return sounds
+
+# Load available music options (one subfolder per music style)
+music_folder_root = "assets/music/levels_final"
+music_folder_paths = [
+    os.path.join(music_folder_root, name)
+    for name in os.listdir(music_folder_root)
+    if os.path.isdir(os.path.join(music_folder_root, name))
+]
+music_folder_paths.sort()  # Optional alphabetical sorting
+music_folder_names = [os.path.basename(path) for path in music_folder_paths]
+
+# Load available food voice options (one subfolder per food voice)
+voice_pack_root = "assets/sounds"
+voice_pack_paths = [
+    os.path.join(voice_pack_root, name)
+    for name in os.listdir(voice_pack_root)
+    if os.path.isdir(os.path.join(voice_pack_root, name))
+]
+voice_pack_paths.sort()
+voice_pack_names = [os.path.basename(path) for path in voice_pack_paths]
+
+
+def get_preview_track(folder_path):
+    candidates = glob.glob(os.path.join(folder_path, "*level01.ogg"))
+    if not candidates:
+        raise FileNotFoundError(f"No preview track found in: {folder_path}")
+    return candidates[0]  # Return the first match
+
+def get_level_track_path(folder_path, level_number):
+    """Returns the first matching *_levelXX.ogg file in the selected folder."""
+    pattern = f"*level{level_number:02}.ogg"
+    matches = glob.glob(os.path.join(folder_path, pattern))
+    if not matches:
+        raise FileNotFoundError(f"No music file found for level {level_number} in {folder_path}")
+    return matches[0]  # Use first match: level 1
+
+# Load skin, sorted alphabetically by number (file prefix: 01_, 02_, ..., 14_)
+skin_files = sorted(glob.glob("assets/snakeskins/*.png"))
+
+# Correct fantasy names for each skin, matching alphabetical file order
+skin_names = [
+    "Brickback",
+    "Dragonscale",
+    "Emberlash",
+    "Serpentleaf",
+    "Bloodhide",
+    "Midnight Denim",
+    "Rootscale",
+    "Rusthide",
+    "King Cobra",
+    "Rocktongue",
+    "Pitgold",
+    "Glaciercoil",
+    "Marbled Viper",
+    "Corroscale"
+]
+
+HEAD_COLORS = [
+    (162, 84, 77),  # Brickback
+    (154, 111, 73),  # Dragonscale
+    (171, 94, 45),  # Emberlash
+    (76, 151, 53),  # Serpentleaf
+    (89, 59, 57),  # Bloodhide
+    (67, 75, 83),  # Midnight Denim
+    (114, 94, 80),  # Rootscale
+    (121, 74, 69),  # Rusthide
+    (102, 100, 99),  # Zebrastrike
+    (148, 147, 147),  # Rocktongue
+    (117, 104, 85),  # Pitgold
+    (59, 210, 202),  # Glaciercoil
+    (162, 163, 175),  # Marbled Viper
+    (112, 101, 52),  # Corroscale
+]
+
+# For cleaner path handling later, consider switching from os.path and glob to pathlib.
+
+# Supported extensions (case-insensitive)
+supported_exts = ["png", "PNG", "jpg", "JPG", "jpeg", "JPEG"]
+
+# Collect matching files for each extension
+background_files_by_ext = {
+    ext: glob.glob(f"assets/backgrounds/Textures/*.{ext}")
+    for ext in supported_exts
+}
+
+# Combine all files into one list
+background_files = []
+for ext in supported_exts:
+    files = background_files_by_ext[ext]
+    background_files.extend(files)
+
+if not background_files:
+    raise FileNotFoundError("❌ No background images found in supported formats.")
+
+# Sort by suffix (e.g., file-01.png, file-02.jpg) or fallback to alphabetical
+background_files = sorted(background_files, key=extract_suffix)
+
+# Load and scale backgrounds
+backgrounds = [
+    load_image(path, (SCREEN_SIZE, SCREEN_SIZE + HUD_HEIGHT), use_alpha=True)
+    for path in background_files
+]
+
+# Get all .png files in assets/food/food64
+all_food_paths = glob.glob("assets/food/food64/*.png")
+
+# Sort them alphabetically by filename
+valid_food_paths = sorted(all_food_paths, key=lambda p: os.path.basename(p).lower())
+
+# Load each image
+food_images = [
+    load_image(path, size=(CELL_SIZE, CELL_SIZE), use_alpha=True)
+    for path in valid_food_paths
+]
+
+# endregion ASSET LOADING
 
 
 # region LEADERBOARD LOGIC
@@ -515,7 +655,7 @@ def merge_named_leaderboards():
 
     return len(unique)
 
-# endregion
+# endregion LEADERBOARD LOGIC
 
 
 # region UI SCREENS & PLAYER SETUP
@@ -776,10 +916,10 @@ def show_instructions_screen(game):
             if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
                 return
 
-# endregion
+# endregion UI SCREENS & PLAYER SETUP
 
 
-# region class helper functions
+# region CLASS HELPER FUNCTIONS
 # === CLASS HELPER FUNCTIONS ===
 
 def draw_eyes(surface, head_x, head_y, direction):
@@ -874,7 +1014,7 @@ def draw_crown(surface, px, py):
             (right, crown_base_top)
         ])
 
-# endregion
+# endregion CLASS HELPER FUNCTIONS
 
 
 # region SNAKE, ENEMY, FOOD CLASSES
@@ -1220,7 +1360,7 @@ class EnemySnake:
             (head.y >= NUM_CELLS - 1 and dir == Vector2(0, 1))
         )
     
-# endregion
+# endregion SNAKE, ENEMY, FOOD CLASSES
 
 
 # region GAME CLASS
@@ -1393,7 +1533,7 @@ class Game:
         # (for sprite sheet with 16 frames: 16 frames / 16 fps = 1 second animation cycle duration)
         self.portal_frame_tick_delay = 3.75
 
-# endregion
+# endregion INIT & RESET
 
     
 # region GAME FLOW
@@ -2212,7 +2352,7 @@ class Game:
             center=(SCREEN_SIZE // 2, SCREEN_SIZE + HUD_HEIGHT - INSTRUCTION_MARGIN_BOTTOM))
         screen.blit(instructions_text_2, instructions_rect_2)
 
-# endregion
+# endregion FLOW
 
 
 # region GAME INITIALIZATION & MAIN LOOP
@@ -2382,7 +2522,7 @@ def main():
         pygame.display.update()
         clock.tick(60)
 
-# endregion
+# endregion GAME INITIALIZATION & MAIN LOOP
 
 
 if __name__ == "__main__":

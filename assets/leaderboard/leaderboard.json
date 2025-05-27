@@ -1,5 +1,16 @@
 [
     {
+        "name": "Uh oh",
+        "score": 323,
+        "size": 50,
+        "date": "05/26/25",
+        "level": 11,
+        "bonus": 61,
+        "penalty": 63,
+        "ts": 1748304267.428412,
+        "duration": "4:24"
+    },
+    {
         "name": "Ben B.",
         "score": 304,
         "size": 65,
@@ -97,16 +108,5 @@
         "penalty": 13,
         "ts": 1748296996.758688,
         "duration": "2:54"
-    },
-    {
-        "name": "Ben B.",
-        "score": 51,
-        "size": 32,
-        "date": "05/26/25",
-        "level": 3,
-        "bonus": 12,
-        "penalty": 4,
-        "ts": 1748286919.871124,
-        "duration": "4:10"
     }
 ]
