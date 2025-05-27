@@ -141,17 +141,32 @@ PUPIL_OFFSET = CELL_SIZE // 15 # Pupils can move within the eye by this amount
 DEBUG_ENABLED = True  # Global master switch
 
 DEBUG_ENABLED_TAGS = {
-    "enemy": True,
-    "bonus": True,
     "leaderboard": True,
+    "UI": True,
+    "snake": True,
+    "enemy": True,
+    "food": True,
+    "portal": True,
+    "music": True,
+    "bonus": True,
+    "draw": True,
+    "game_over": True,
     "default": True
 }
 
+# 500 is 500ms or 1/2 second; 1000 is 1000ms or 1 second, etc...
 DEBUG_THROTTLES = {
-    "enemy": 500,
+    "leaderboard": 500,
+    "UI": 500,
+    "snake": 500,
+    "enemy": 1000,
+    "food": 500,
+    "portal": 500,
+    "music": 500,
     "bonus": 500,
-    "leaderboard": 250,
-    "default": 250
+    "draw": 500,
+    "game_over": 500,
+    "default": 500
 }
 
 _last_debug_times = {}
@@ -485,7 +500,7 @@ def merge_named_leaderboards():
         filename = os.path.basename(path)
         if filename == "leaderboard.json":
             continue
-        print(f"Merging: {filename}")
+        print_debug("leaderboard", f"Merging: {filename}")
         merged_count += 1
 
         try:
@@ -497,9 +512,9 @@ def merge_named_leaderboards():
                         if required_keys.issubset(entry.keys()):
                             merged.append(entry)
                         else:
-                            print(f"[WARN] Skipping malformed entry in {path}: {entry}")
+                            print_debug("leaderboard", f"[WARN] Skipping malformed entry in {path}: {entry}")
         except Exception as e:
-            print(f"[ERROR] Failed to read {path}: {e}")
+            print_debug("leaderboard", f"[ERROR] Failed to read {path}: {e}")
 
     # Deduplicate and sort
     seen_ts = set()
@@ -729,9 +744,9 @@ def prompt_player_name_skin_music_voice_speed():
                         try:
                             pygame.mixer.Sound(wav_files[0]).play()
                         except pygame.error as e:
-                            print(f"⚠️ Error playing preview: {wav_files[0]} → {e}")
+                            print_debug("UI", f"⚠️ Error playing preview: {wav_files[0]} → {e}")
                     else:
-                        print(f"❌ No .wav files found in: {preview_folder}")
+                        print_debug("UI", f"❌ No .wav files found in: {preview_folder}")
 
                 elif event.unicode and event.unicode.isprintable():
                     if event.unicode in SAFE_CHARS:
@@ -926,7 +941,7 @@ class EnemySnake:
             if self.direction == self._spawn_direction:  # Keep original direction while entering
                 next_pos = head + self.direction
                 if next_pos in player_body:
-                    print_debug("enemy", f"[ENEMY-CAUSED COLLISION] Enemy hit player at {next_pos}. Player rewarded!")
+                    print_debug("enemy", f"Enemy hit player at {next_pos}. Player rewarded!")
                     self._death_position = head
                     self.body = []
                     return True # Player should be rewarded
@@ -953,7 +968,7 @@ class EnemySnake:
                     return False # Valid move found
 
         # If we get here, enemy did not move legally - reward player
-        print_debug("enemy", f"[ENEMY-CAUSED COLLISION] Enemy trapped at {head}. Player rewarded!")
+        print_debug("enemy", f"Enemy trapped at {head}. Player rewarded!")
         self._death_position = head
         self.body = []
         return True # Player should be rewarded
@@ -1393,8 +1408,6 @@ class Game:
             self.final_level = FINAL_LEVEL_FAST
             self.mouse_bonus_unlock_ms = START_SPEED_FAST
 
-        print(f"[DEBUG] Speed mode set to {mode} → final level {self.final_level}")
-
     def load_portal_animation(self):
         PORTAL_SCALE = 2
         self.portal_frames = [
@@ -1530,7 +1543,7 @@ class Game:
         
         hx, hy = get_snake_head_cell(self.snake)
         if not (0 <= hx < NUM_CELLS) or not (0 <= hy < NUM_CELLS):
-            print_debug("default", f"FATAL: Snake head moved out of bounds: {hx}, {hy}")
+            print_debug("snake", f"FATAL: Snake head moved out of bounds: {hx}, {hy}")
 
         if (not self.food_voice_channel.get_busy() 
             and self.food_voice_queue 
@@ -1542,7 +1555,7 @@ class Game:
                 pygame.mixer.music.set_volume(0.50)
 
                 self.food_voice_channel.play(next_sound)
-                print(f"Played: {food_name_key} from voice: {os.path.basename(self.voice_folder)}")
+                print_debug("food", f"Played: {food_name_key} from voice: {os.path.basename(self.voice_folder)}")
 
                 # Schedule background volume restoration after food sound finishes
                 food_sound_duration_ms = int(next_sound.get_length() * 1000)
@@ -1569,7 +1582,7 @@ class Game:
                     )
         
         pygame.mixer.music.fadeout(500)
-        print("Game Over - resetting everything")
+        print_debug("game_over", "Game Over - resetting everything")
         self.show_leaderboard = True
 
     def game_duration(self):
@@ -1594,7 +1607,7 @@ class Game:
         """Initialize a new level after transition while preserving snake length."""
         pygame.mixer.music.fadeout(500) # Fade out over 0.5 seconds
         track_path = get_level_track_path(self.music_folder, self.level)
-        print(f"Now playing: {track_path}")
+        print_debug("music", f"Now playing: {track_path}")
         pygame.mixer.music.load(track_path)
         pygame.mixer.music.set_volume(1.0)
         pygame.mixer.music.play(-1, fade_ms=1000)
@@ -1629,7 +1642,7 @@ class Game:
                 starting_pos = Vector2(x, 0)  # enter from top
                 direction = Vector2(0, 1)
             else:
-                print("[DEBUG] Unexpected self.last_portal_side. Defaulting to center spawn.")
+                print_debug("portal", "Unexpected self.last_portal_side. Defaulting to center spawn.")
                 starting_pos = Vector2(NUM_CELLS // 2, NUM_CELLS // 2)
                 direction = Vector2(1, 0)
         else:
@@ -1652,7 +1665,7 @@ class Game:
         self.snake.last_direction = direction
         self.snake.body = [starting_pos]
         portal_side = getattr(self, "last_portal_side", "N/A")
-        print(f"[DEBUG] Snake spawned at {starting_pos} facing {direction} (opposite '{portal_side}' wall).")
+        print_debug("snake", f"Snake spawned at {starting_pos} facing {direction} (opposite '{portal_side}' wall).")
 
         # Build out the snake and enemysnake in lock step ie enemy snake length matched snake length
         for i in range(1, snake_length):
@@ -1667,17 +1680,15 @@ class Game:
         self.portal_open = False
         self.portal_position = None
         pygame.time.set_timer(TICK, self.snake_speed_ms)
-        print(f"\U0001f680 Level {self.level} @ {self.snake_speed_ms}ms")
 
     def show_victory(self):
-        """Display the Victory screen after completing level 21."""
         self.transitioning = False  # ensure level doesn’t accidentally start
         if self.victory_start_time is None:
             self.victory_start_time = pygame.time.get_ticks()
             self.victory_extra = 88
             self.score += self.victory_extra
             self.portal_sound.play()
-            print(f"[DEBUG] Triggered victory screen at {self.victory_start_time}")
+            print_debug("game_over", f"Triggered victory screen at {self.victory_start_time}")
             return
 
         victory_y = SCREEN_SIZE // 4
@@ -1708,7 +1719,7 @@ class Game:
 
         # After 15 seconds, go to leaderboard
         elapsed = pygame.time.get_ticks() - self.victory_start_time
-        print(f"[DEBUG] Victory screen shown for {elapsed} ms")
+        print_debug("game_over", f"Victory screen shown for {elapsed} ms")
         if elapsed >= 15000:
             self.game_over()
             self.show_victory_screen = False
@@ -1734,9 +1745,9 @@ class Game:
             food_name_key = self.food_name.lower()
             if food_name_key in self.yummy_sounds:
                 self.food_voice_queue.append((food_name_key, self.yummy_sounds[food_name_key]))
-                print(f"Queued: {food_name_key}") # debug
+                print_debug("food", f"Queued: {food_name_key}") # debug
 
-            print(f"Ate: {self.food_name}")
+            print_debug("food", f"Ate: {self.food_name}")
 
             self.food_name, self.food_image = self.current_food()
             self.food = Food(self.snake.body, self.food_image)
@@ -1760,11 +1771,11 @@ class Game:
             px, py = int(self.portal_position.x), int(self.portal_position.y)
             if (hx, hy) == (px, py):
                 self.portal_sound.play()
-                print(f"[DEBUG] Portal entered at level {self.level}")
-                print(f"[DEBUG] Snake entered portal at {self.portal_position} on '{self.last_portal_side}' wall.")
+                print_debug("portal", f"Portal entered at level {self.level}")
+                print_debug("snake", f"Snake entered portal at {self.portal_position} on '{self.last_portal_side}' wall.")
 
             if self.level == self.final_level - 1:
-                print(f"[DEBUG] Triggering victory screen for final_level={self.final_level}")
+                print_debug("game_over", f"Triggering victory screen for final_level={self.final_level}")
                 self.show_victory_screen = True
                 self.transitioning = False  # Prevents unwanted level start
                 return
@@ -1787,9 +1798,9 @@ class Game:
             return
 
         if head.x < 0 or head.x >= NUM_CELLS or head.y < 0 or head.y >= NUM_CELLS:
-            print_debug("default", f"Wall collision at {head} — triggering game over")
+            print_debug("snake", f"Wall collision at {head} — triggering game over")
             if self.portal_open:
-                print_debug("default", f"Portal open at: {self.portal_position}")
+                print_debug("portal", f"Portal open at: {self.portal_position}")
             self.penalty_sound.play()
             self.game_over()
 
@@ -1862,12 +1873,12 @@ class Game:
                 self.last_portal_position = portal_position # "saved copy" of most recent portal position 
                 self.last_portal_side = wall
 
-                print(f"\U0001f6aa Portal spawned at ({x}, {y})")
+                print_debug("portal", f"\U0001f6aa Portal spawned at ({x}, {y})")
                 break
 
             attempts += 1
             if attempts > 3:
-                print("⚠️ Did not find portal position not occupied by food after 3 tries (~1 in 72 million)")
+                print_debug("portal", "⚠️ Did not find portal position not occupied by food after 3 tries (~1 in 72 million)")
                 self.portal_position = portal_position # portal and food overlap
                 self.portal_open = True
                 self.last_portal_position = portal_position
@@ -1875,7 +1886,7 @@ class Game:
                 break  
 
         if attempts > 0 and self.portal_open:
-            print(f"🔁 Portal placement took {attempts} additional attempt{'s' if attempts != 1 else ''}")
+            print_debug("portal", f"🔁 Portal placement took {attempts} additional attempt{'s' if attempts != 1 else ''}")
 
 # endregion EVENTS
 
@@ -1907,15 +1918,10 @@ class Game:
 
             # Fades linearly: starting at 255 (fully opaque = completely visible);
             # ending at 0 (fully transparent = completely invisible)
-            # alpha = int(255 * shrink_factor)
             alpha = max(0, min(255, int(255 * shrink_factor))) # clamp btw 0 and 255 to be safe
 
-            # if radius > base_radius or radius <= 0 or alpha == 0:
-            #     print(f"[SMOKE DEBUG] Skipping drawing smoke: radius={radius}, base_radius={base_radius}, alpha={alpha}")
-            #     continue  # Skip drawing if smoke is invisible or invalid
-            
             if radius > base_radius:
-                print(f"[SMOKE DEBUG] Radius too large! radius={radius}, base_radius={base_radius}")
+                print_debug("enemy", f"Radius too large! radius={radius}, base_radius={base_radius}")
                 continue
             elif radius <= 0 or alpha == 0:
                 continue
@@ -1934,13 +1940,11 @@ class Game:
             # color = (*SMOKE, alpha)
             color = Color(*SMOKE, alpha) # use pygame.Color for guaranteed safety
 
-            # print(f"alpha={alpha}, radius={radius}, color={color}")
-
             try:
                 pygame.draw.circle(smoke_surface, color, center, radius)
 
             except ValueError as e:
-                print(f"Color error with color={color}, radius={radius}, center={center}")
+                print_debug("enemy", f"Color error with color={color}, radius={radius}, center={center}")
                 raise e
             
             # Find center of smoke puff circle
@@ -2238,7 +2242,7 @@ def main():
     while True:
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
-                print(f"[DEBUG KEYDOWN] {pygame.key.name(event.key)}")
+                print_debug("UI", f"Key pressed: {pygame.key.name(event.key)}")
 
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -2312,10 +2316,10 @@ def main():
                         pygame.display.flip()
 
                         if merged_count == None:
-                            print("No new entries to merge.")
+                            print_debug("leaderboard", "No new entries to merge.")
 
                         else:
-                            print(f"Merged {merged_count} entries!")
+                            print_debug("leaderboard", f"Merged {merged_count} entries!")
 
             else:
                 if event.type == TICK and not game.paused:
@@ -2329,7 +2333,7 @@ def main():
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_p:
                         game.paused = not game.paused
-                        print(f"Game {'paused' if game.paused else 'resumed'}")
+                        print_debug("UI", f"Game {'paused' if game.paused else 'resumed'}")
                     elif not game.paused and not game.transitioning:
 
                         # See doc direction_vs_last_direction.md for full explanation.
@@ -2344,9 +2348,9 @@ def main():
                         
                         # Manual debug trigger
                         elif event.key == pygame.K_d:  # D for debug
-                            print("=== Snake Debug Dump ===")
+                            print_debug("snake", "=== Snake Debug Dump ===")
                             for i, segment in enumerate(game.snake.body):
-                                print(f"  [{i}] {segment}")
+                                print_debug("snake", f"[{i}] {segment}")
 
                 #   mouse controls
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button in (1, 3): # Left, Right click
@@ -2364,7 +2368,7 @@ def main():
                                 game.score += bonus_points
                                 game.bonus_points += bonus_points
                                 game.bonus_sound.play()
-                                print(f"🎯 Bonus clicked: + {bonus_points}")
+                                print_debug("bonus", f"Bonus clicked: + {bonus_points}")
                                 game.bonus_active = False
                                 px = game.bonus_position.x * CELL_SIZE
                                 py = game.bonus_position.y * CELL_SIZE + HUD_HEIGHT
@@ -2381,7 +2385,7 @@ def main():
 
             for event in pygame.event.get():
                 if event.type == pygame.KEYDOWN:
-                    print("⏩ Skipping to leaderboard early")
+                    print_debug("UI", "Skipping to leaderboard early")
                     game.game_over()
                     game.show_victory_screen = False
                 elif event.type == pygame.QUIT:

@@ -11,6 +11,17 @@
         "duration": "4:24"
     },
     {
+        "name": "Mr. B.",
+        "score": 323,
+        "size": 45,
+        "date": "05/27/25",
+        "level": 10,
+        "bonus": 66,
+        "penalty": 33,
+        "ts": 1748383638.377977,
+        "duration": "4:59"
+    },
+    {
         "name": "Ghost",
         "score": 317,
         "size": 46,
@@ -31,6 +42,17 @@
         "penalty": 268,
         "ts": 1748139673.038636,
         "duration": "5:53"
+    },
+    {
+        "name": "Big B",
+        "score": 292,
+        "size": 47,
+        "date": "05/27/25",
+        "level": 10,
+        "bonus": 45,
+        "penalty": 11,
+        "ts": 1748382863.675589,
+        "duration": "3:53"
     },
     {
         "name": "elisa",
@@ -86,27 +108,5 @@
         "penalty": 4,
         "ts": 1748104052.594133,
         "duration": "3:40"
-    },
-    {
-        "name": "Ben Bar",
-        "score": 67,
-        "size": 50,
-        "date": "05/26/25",
-        "level": 1,
-        "bonus": 12,
-        "penalty": 3,
-        "ts": 1748291053.53382,
-        "duration": "5:51"
-    },
-    {
-        "name": "elisa",
-        "score": 64,
-        "size": 17,
-        "date": "05/24/25",
-        "level": 4,
-        "bonus": 27,
-        "penalty": 0,
-        "ts": 1748139261.956304,
-        "duration": "2:36"
     }
 ]
