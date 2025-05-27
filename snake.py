@@ -1535,7 +1535,6 @@ class Game:
 
 # endregion INIT & RESET
 
-    
 # region GAME FLOW
     def update(self):
         if self.game_over_already_ran or self.paused or self.show_victory_screen:
@@ -1597,15 +1596,15 @@ class Game:
             time_since_last_enemy >= ENEMY_SPAWN_INTERVAL and
             not self.transitioning):
                 
-            print(f"[DEBUG] Enemy check triggered after {time_since_last_enemy} ms")
+            print_debug("enemy", f"Enemy check triggered after {time_since_last_enemy} ms")
             self.last_enemy_spawn_time = current_time  # Reset timer
 
             random_roll_for_enemy = random.random()
-            print(f"[DEBUG] Random roll for enemy: {random_roll_for_enemy:.3f}")
+            print_debug("enemy", f"Random roll for enemy: {random_roll_for_enemy:.3f}")
 
             if random_roll_for_enemy <= ENEMY_SPAWN_PROBABILITY:
                 print_debug("enemy", f"[SPAWN PROBABILITY DEBUG] random_roll_for_enemy={random_roll_for_enemy:.3f} <= ENEMY_SPAWN_PROBABILITY={ENEMY_SPAWN_PROBABILITY}")
-                print("[DEBUG] Enemy will spawn.")
+                print_debug("enemy", "Enemy will spawn.")
                 available_sides = ["left", "right", "top", "bottom"]
                 if self.player_entry_side in available_sides:
                     available_sides.remove(self.player_entry_side)
@@ -1631,17 +1630,17 @@ class Game:
             self.snake_speed_ms <= self.mouse_bonus_unlock_ms and
             time_since_last_bonus >= BONUS_SPAWN_INTERVAL):
             
-            print(f"[DEBUG] Bonus check triggered after {time_since_last_bonus} ms")
+            print_debug("default", f"Bonus check triggered after {time_since_last_bonus} ms")
             self.last_bonus_spawn_time = current_time  # Reset timer
 
             random_roll_for_bonus = random.random()
-            print(f"[DEBUG] Random roll for bonus: {random_roll_for_bonus:.3f}")
+            print_debug("default", f"Random roll for bonus: {random_roll_for_bonus:.3f}")
             
             if random_roll_for_bonus <= BONUS_SPAWN_PROBABILITY:
-                print("[DEBUG] Bonus will spawn.")
+                print_debug("default", "Bonus will spawn.")
                 self.spawn_bonus()
             else:
-                print("[DEBUG] Bonus spawn skipped.")
+                print_debug("default", "Bonus spawn skipped.")
     
         if self.bonus_active:
             DEBUG = False
@@ -1654,7 +1653,7 @@ class Game:
         
         hx, hy = get_snake_head_cell(self.snake)
         if not (0 <= hx < NUM_CELLS) or not (0 <= hy < NUM_CELLS):
-            print(f"[FATAL] Snake head moved out of bounds: {hx}, {hy}")
+            print_debug("default", f"FATAL: Snake head moved out of bounds: {hx}, {hy}")
 
         if (not self.food_voice_channel.get_busy() 
             and self.food_voice_queue 
