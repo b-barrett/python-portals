@@ -36,7 +36,7 @@ python-portals/
 │   ├── backgrounds/
 │   ├── fonts/
 │   ├── food/
-│   ├── leaderboard/leaderboard.json, player1.json, player2.json, ...
+│   ├── leaderboard/
 │   ├── music/
 │   ├── portals/
 │   ├── snakeskins/
@@ -51,34 +51,8 @@ python-portals/
 
 ---
 
-## 🚫 .gitignore Example
-
-```
-__pycache__/
-*.pyc
-*.pyo
-*.save
-.DS_Store
-```
-
----
-
-## 📦 Packaging (Coming Soon)
-
-* [ ] Convert to `.exe` (Windows) or `.app` (Mac) using `pyinstaller` or `py2app`
-* [ ] Distribute zipped game folder for non-dev testers
-
----
-
-## ❤️ Credits
+### Credits
 
 * Built with Python + Pygame
 * Font: VT323
-* Music & sound credits listed in README\_audio.md
-* Developed by Thomas Christol with love, testing, and portals 🌀
-
----
-
-## 🐍 Python Portals
-
-**A game of reflex, precision, and bonus snacks. Good luck.**
+* Asset credits listed in README/licensing.md
