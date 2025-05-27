@@ -142,23 +142,39 @@ DEBUG_ENABLED = True  # Global master switch
 
 DEBUG_ENABLED_TAGS = {
     "enemy": True,
-    "spawn": True,
-    "collision": True,
-    "speed": True,
+    "bonus": True,
+    "leaderboard": True,
     "default": True
 }
 
 DEBUG_THROTTLES = {
-    "enemy": 250,
-    "spawn": 750,
-    "collision": 500,
-    "speed": 250,
-    "default": 500
+    "enemy": 500,
+    "bonus": 500,
+    "leaderboard": 250,
+    "default": 250
 }
 
 _last_debug_times = {}
 
 def print_debug(tag, msg):
+    """
+    Print debug messages with timestamp-based throttling for specific tags.
+
+    Args:
+        tag (str): Debug category tag used for filtering and throttling messages
+        msg (str): Debug message to be printed
+
+    The function will only print if:
+    - DEBUG_ENABLED is True
+    - The tag is enabled in DEBUG_ENABLED_TAGS
+    - Enough time has passed since last message with same tag (controlled by DEBUG_THROTTLES)
+
+    Global variables used:
+        DEBUG_ENABLED (bool): Master switch for debug output
+        DEBUG_ENABLED_TAGS (dict): Dict of tag->bool indicating which tags are enabled
+        DEBUG_THROTTLES (dict): Dict of tag->int for minimum ms between messages
+        _last_debug_times (dict): Dict tracking last print time for each tag
+    """
     if not DEBUG_ENABLED or not DEBUG_ENABLED_TAGS.get(tag, False):
         return
 
@@ -363,10 +379,10 @@ def save_active_leaderboard(player_name, leaderboard, tournament_mode=False):
         
         # atomically replace original
         shutil.move(temp_path, path)
-        print(f"✅ Saved leaderboard to {path}")
+        print_debug("leaderboard", f"✅ Saved leaderboard to {path}")
 
     except Exception as e:
-        print(f"[ERROR] Failed to save leaderboard to {path}: {e}")
+        print_debug("leaderboard", f"[ERROR] Failed to save leaderboard to {path}: {e}")
         
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
@@ -381,21 +397,21 @@ def load_active_leaderboard(player_name=None, tournament_mode=False):
             if isinstance(data, list):
                 return data
             else:
-                print(f"⚠️ Leaderboard file {path} is not a list. Ignoring.")
+                print_debug("leaderboard", f"⚠️ Leaderboard file {path} is not a list. Ignoring.")
                 return []
     except (json.JSONDecodeError, OSError) as e:
-        print(f"⚠️ Failed to load leaderboard {path}: {e}")
+        print_debug("leaderboard", f"⚠️ Failed to load leaderboard {path}: {e}")
         return []
 
 def git_pull_leaderboard():
     if os.path.isdir(".git"):
         try:
             subprocess.run(["git", "pull", "origin", "main"], check=True)
-            print("✅ Pulled latest leaderboard.json from GitHub")
+            print_debug("leaderboard", "✅ Pulled latest leaderboard.json from GitHub")
         except subprocess.CalledProcessError as e:
-            print(f"❌ Git pull failed: {e}")
+            print_debug("leaderboard", f"❌ Git pull failed: {e}")
     else:
-        print("Git pull skipped (not a Git repo)")
+        print_debug("leaderboard", "Git pull skipped (not a Git repo)")
 
 def git_push_leaderboard():
     if os.path.isdir(".git"):
@@ -403,11 +419,11 @@ def git_push_leaderboard():
             subprocess.run(["git", "add", "assets/leaderboard/leaderboard.json"], check=True)
             subprocess.run(["git", "commit", "-m", "Autoupdate leaderboard"], check=True)
             subprocess.run(["git", "push", "origin", "main"], check=True)
-            print("✅ Pushed updated leaderboard.json to GitHub")
+            print_debug("leaderboard", "✅ Pushed updated leaderboard.json to GitHub")
         except subprocess.CalledProcessError as e:
-            print(f"❌ Git push failed: {e}")
+            print_debug("leaderboard", f"❌ Git push failed: {e}")
     else:
-        print("Git push skipped (not a Git repo)")
+        print_debug("leaderboard", "Git push skipped (not a Git repo)")
 
 def update_leaderboard(player_name, score, snake_length, level, bonus_points, penalty_points, duration=None, tournament_mode=False):
     leaderboard = load_active_leaderboard(player_name, tournament_mode)
@@ -451,10 +467,10 @@ def load_global_leaderboard():
             if isinstance(data, list):
                 return data
             else:
-                print("⚠️ Leaderboard file is not a list. Ignoring.")
+                print_debug("leaderboard", "⚠️ Leaderboard file is not a list. Ignoring.")
                 return []
     except (json.JSONDecodeError, OSError) as e:
-        print(f"⚠️ Failed to load leaderboard: {e}")
+        print_debug("leaderboard", f"⚠️ Failed to load leaderboard: {e}")
         return []
     
 def merge_named_leaderboards():
@@ -462,14 +478,14 @@ def merge_named_leaderboards():
     folder = os.path.dirname(LEADERBOARD_FILE)
     all_jsons = glob.glob(os.path.join(folder, "*.json"))
 
-    merged =load_global_leaderboard()
+    merged = load_global_leaderboard()
     merged_count = 0
 
     for path in all_jsons:
         filename = os.path.basename(path)
         if filename == "leaderboard.json":
             continue
-        print(f"[DEBUG] Merging: {filename}")
+        print(f"Merging: {filename}")
         merged_count += 1
 
         try:
@@ -495,7 +511,7 @@ def merge_named_leaderboards():
             unique.append(entry)
 
     if not unique:
-        print(f"[WARN] No valid leaderboard entries found — merge skipped.")
+        print_debug("leaderboard", f"[WARN] No valid leaderboard entries found — merge skipped.")
         return  # Just exit the function early without saving or pushing
 
     unique.sort(key=lambda x: (-x["score"], -x["size"], -x["level"],
@@ -509,7 +525,7 @@ def merge_named_leaderboards():
     with open(output_path, "w") as f:
         json.dump(top_10, f, indent=4)
 
-    print(f"✅ Merged {len(unique)} unique entries from {merged_count} files → {output_path}")
+    print_debug("leaderboard", f"✅ Merged {len(unique)} unique entries from {merged_count} files → {output_path}")
 
     git_push_leaderboard()
 
@@ -1075,29 +1091,28 @@ class EnemySnake:
                                 for p in (next_pos, next_next_pos))
             
             if not enters_screen:
-                print(f"[DEBUG] Rejected spawn: won't enter screen from {side} in next two moves with direction {direction}.")
+                print_debug("enemy", f"Rejected spawn: won't enter screen from {side} in next two moves with direction {direction}.")
+
             else:
-                print(f"[DEBUG] Accepted spawn: will enter screen from {side} in next two moves with direction {direction}.")
+                print_debug("enemy", f"Accepted spawn: will enter screen from {side} in next two moves with direction {direction}.")
 
             if enters_screen:
                 body = [head + (-i * direction) for i in range(length)]
 
                 # Debug output
-                print(f"Enemy Spawn Side: {side}")
-                print(f"Enemy Direction: {direction}")
-                print(f"Enemy Head Position (offscreen): {head}")
-                print(f"Enemy Full Body: {[tuple(seg) for seg in body]}")
+                print_debug("enemy", f"Enemy Head Position (offscreen): {head}")
+                print_debug("enemy", f"Enemy Full Body: {[tuple(seg) for seg in body]}")
 
                 return body, direction
             
             else:
-                print(f"[DEBUG] Spawned enemy won't enter screen. Retrying.")
+                print_debug("enemy", "Spawned enemy won't enter screen. Retrying.")
 
             # Try again from a different side
             side = random.choice(["left", "right", "top", "bottom"])
 
         # Fallback
-        print("[ERROR] Failed to spawn enemy snake after multiple attempts.")
+        print_debug("enemy", "Failed to spawn enemy snake after multiple attempts.")
         return None, None
 
     @staticmethod # does not depend on instance state; can be called without constructing an object.
@@ -1495,22 +1510,19 @@ class Game:
             self.snake_speed_ms <= self.mouse_bonus_unlock_ms and
             time_since_last_bonus >= BONUS_SPAWN_INTERVAL):
             
-            print_debug("default", f"Bonus check triggered after {time_since_last_bonus} ms")
+            print_debug("bonus", f"Bonus check triggered after {time_since_last_bonus} ms")
             self.last_bonus_spawn_time = current_time  # Reset timer
 
             random_roll_for_bonus = random.random()
-            print_debug("default", f"Random roll for bonus: {random_roll_for_bonus:.3f}")
+            print_debug("bonus", f"Random roll for bonus: {random_roll_for_bonus:.3f}")
             
             if random_roll_for_bonus <= BONUS_SPAWN_PROBABILITY:
-                print_debug("default", "Bonus will spawn.")
+                print_debug("bonus", "Bonus will spawn.")
                 self.spawn_bonus()
             else:
-                print_debug("default", "Bonus spawn skipped.")
+                print_debug("bonus", "Bonus spawn skipped.")
     
         if self.bonus_active:
-            DEBUG = False
-            if DEBUG:
-                print(f"Bonus active: {self.bonus_timer} frames remaining")
             self.bonus_timer -= 1
             if self.bonus_timer <= 0:
                 self.bonus_active = False
@@ -1556,7 +1568,7 @@ class Game:
                     tournament_mode=True
                     )
         
-        pygame.mixer.music.fadeout(500)  # ⬅️ Stop music immediately
+        pygame.mixer.music.fadeout(500)
         print("Game Over - resetting everything")
         self.show_leaderboard = True
 
@@ -1775,9 +1787,9 @@ class Game:
             return
 
         if head.x < 0 or head.x >= NUM_CELLS or head.y < 0 or head.y >= NUM_CELLS:
-            print_debug("collision", f"Wall collision at {head} — triggering game over")
+            print_debug("default", f"Wall collision at {head} — triggering game over")
             if self.portal_open:
-                print_debug("portal", f"Portal open at: {self.portal_position}")
+                print_debug("default", f"Portal open at: {self.portal_position}")
             self.penalty_sound.play()
             self.game_over()
 
