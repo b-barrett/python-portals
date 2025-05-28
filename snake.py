@@ -470,6 +470,10 @@ def update_leaderboard(player_name, score, snake_length, level, bonus_points, pe
     
     # Save to correct path
     save_active_leaderboard(player_name, leaderboard, tournament_mode)
+    
+    # If this is the global leaderboard (not a named one), push changes to git
+    if not tournament_mode:
+        git_push_leaderboard()
 
     return timestamp if any(entry.get("ts") == timestamp for entry in leaderboard) else None
 
