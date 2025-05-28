@@ -1,5 +1,16 @@
 [
     {
+        "name": "Juali",
+        "score": 339,
+        "size": 46,
+        "date": "05/28/25",
+        "level": 10,
+        "bonus": 58,
+        "penalty": 19,
+        "ts": 1748454843.355534,
+        "duration": "4:16"
+    },
+    {
         "name": "Uh oh",
         "score": 323,
         "size": 50,
@@ -97,16 +108,5 @@
         "penalty": 12,
         "ts": 1748297516.975122,
         "duration": "1:49"
-    },
-    {
-        "name": "7 j77j7",
-        "score": 68,
-        "size": 19,
-        "date": "05/24/25",
-        "level": 4,
-        "bonus": 27,
-        "penalty": 4,
-        "ts": 1748104052.594133,
-        "duration": "3:40"
     }
 ]
