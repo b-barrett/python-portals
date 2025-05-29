@@ -2153,14 +2153,14 @@ class Game:
         screen.blit(trophy_emoji_surf, right_emoji_rect)
 
         # Headers and row keys for the leaderboard table (white space in Size, Pts cols for aesthetic)
-        all_headers = ["Rank", "Name", " Size", "  Pts", "Lvl", "Bns", "Pen", "Dur", "Date"]
+        all_headers = ["Rank", "Name", "  Pts", " Size", "Lvl", "Bns", "Pen", "Dur", "Date"]
 
         # Lambdas to extract data for each column from a leaderboard entry
         all_row_keys = [
             lambda idx, entry: f"{idx+1}",
             lambda idx, entry: entry["name"],
-            lambda idx, entry: f" {str(entry.get("size", "N/A"))}",
             lambda idx, entry: f"  {str(entry.get("score", 0))}",
+            lambda idx, entry: f" {str(entry.get("size", "N/A"))}",
             lambda idx, entry: str(entry.get("level", "N/A")),
             lambda idx, entry: f"{int(100 * entry.get('bonus', 0) / entry.get('score', 1))}%",
             lambda idx, entry: f"{int(100 * entry.get('penalty', 0) / entry.get('score', 1))}%",
