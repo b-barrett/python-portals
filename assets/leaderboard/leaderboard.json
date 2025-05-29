@@ -77,6 +77,17 @@
         "duration": "3:53"
     },
     {
+        "name": "Thanks",
+        "score": 154,
+        "size": 28,
+        "date": "05/29/25",
+        "level": 6,
+        "bonus": 38,
+        "penalty": 4,
+        "ts": 1748526666.492267,
+        "duration": "2:11"
+    },
+    {
         "name": "elisa",
         "score": 129,
         "size": 26,
@@ -97,16 +108,5 @@
         "penalty": 24,
         "ts": 1748140074.265458,
         "duration": "5:41"
-    },
-    {
-        "name": "Let Go",
-        "score": 94,
-        "size": 26,
-        "date": "05/27/25",
-        "level": 6,
-        "bonus": 7,
-        "penalty": 2,
-        "ts": 1748350822.008596,
-        "duration": "2:00"
     }
 ]
