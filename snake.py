@@ -754,7 +754,7 @@ def prompt_player_name_skin_music_voice_speed():
 
                 elif event.unicode and event.unicode.isprintable():
                     if event.unicode in SAFE_CHARS:
-                        if len(name) < 7: # check length *before* adding next character
+                        if len(name) < 6: # check length *before* adding next character
                             name += event.unicode
                         else:
                             error_sound.play()
