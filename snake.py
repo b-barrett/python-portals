@@ -2159,9 +2159,9 @@ class Game:
         all_row_keys = [
             lambda idx, entry: f"{idx+1}",
             lambda idx, entry: entry["name"],
-            lambda idx, entry: f"  {str(entry.get("score", 0))}",
-            lambda idx, entry: f" {str(entry.get("size", "N/A"))}",
-            lambda idx, entry: str(entry.get("level", "N/A")),
+            lambda idx, entry: f"  {str(entry.get('score', 0))}",
+            lambda idx, entry: f" {str(entry.get('size', 'N/A'))}",
+            lambda idx, entry: str(entry.get('level', 'N/A')),
             lambda idx, entry: f"{int(100 * entry.get('bonus', 0) / entry.get('score', 1))}%",
             lambda idx, entry: f"{int(100 * entry.get('penalty', 0) / entry.get('score', 1))}%",
             lambda idx, entry: entry.get("duration", "N/A"),
