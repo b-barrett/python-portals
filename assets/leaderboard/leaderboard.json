@@ -55,6 +55,17 @@
         "duration": "5:53"
     },
     {
+        "name": "NYC RAT",
+        "score": 301,
+        "size": 42,
+        "date": "05/29/25",
+        "level": 10,
+        "bonus": 62,
+        "penalty": 24,
+        "ts": 1748524246.021926,
+        "duration": "3:24"
+    },
+    {
         "name": "Big B",
         "score": 292,
         "size": 47,
@@ -97,16 +108,5 @@
         "penalty": 2,
         "ts": 1748350822.008596,
         "duration": "2:00"
-    },
-    {
-        "name": "OK Then",
-        "score": 71,
-        "size": 24,
-        "date": "05/26/25",
-        "level": 5,
-        "bonus": 8,
-        "penalty": 12,
-        "ts": 1748297516.975122,
-        "duration": "1:49"
     }
 ]
