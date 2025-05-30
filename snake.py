@@ -121,8 +121,8 @@ BONUS_SPAWN_PROBABILITY = 1/4
 BONUS_LIFETIME_SEC = 5 # in seconds
 
 # === Enemy Snake Spawn Conditions ===
-ENEMY_SPAWN_INTERVAL = 5000
-ENEMY_SPAWN_PROBABILITY = 1
+ENEMY_SPAWN_INTERVAL = 4000
+ENEMY_SPAWN_PROBABILITY = 1/4
 ENEMY_MARGIN = 4  # Number of cells from edge that enemy snakes avoid
 ENEMY_MAX_SIZE = None
 
