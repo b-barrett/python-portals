@@ -77,6 +77,17 @@
         "duration": "3:53"
     },
     {
+        "name": "poopsy",
+        "score": 177,
+        "size": 28,
+        "date": "06/05/25",
+        "level": 7,
+        "bonus": 67,
+        "penalty": 6,
+        "ts": 1749141941.654736,
+        "duration": "5:11"
+    },
+    {
         "name": "Oh Man",
         "score": 155,
         "size": 33,
@@ -97,16 +108,5 @@
         "penalty": 4,
         "ts": 1748526666.492267,
         "duration": "2:11"
-    },
-    {
-        "name": "Python",
-        "score": 153,
-        "size": 29,
-        "date": "05/29/25",
-        "level": 7,
-        "bonus": 39,
-        "penalty": 17,
-        "ts": 1748527057.19233,
-        "duration": "2:35"
     }
 ]
