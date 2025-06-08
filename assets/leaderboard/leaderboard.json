@@ -77,6 +77,17 @@
         "duration": "3:53"
     },
     {
+        "name": "Elisa",
+        "score": 251,
+        "size": 40,
+        "date": "06/07/25",
+        "level": 9,
+        "bonus": 55,
+        "penalty": 2,
+        "ts": 1749345767.105318,
+        "duration": "4:53"
+    },
+    {
         "name": "poopsy",
         "score": 177,
         "size": 28,
@@ -97,16 +108,5 @@
         "penalty": 17,
         "ts": 1748529173.686044,
         "duration": "3:09"
-    },
-    {
-        "name": "Thanks",
-        "score": 154,
-        "size": 28,
-        "date": "05/29/25",
-        "level": 6,
-        "bonus": 38,
-        "penalty": 4,
-        "ts": 1748526666.492267,
-        "duration": "2:11"
     }
 ]
