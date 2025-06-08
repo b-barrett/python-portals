@@ -88,6 +88,17 @@
         "duration": "4:53"
     },
     {
+        "name": "UNDI",
+        "score": 188,
+        "size": 37,
+        "date": "06/07/25",
+        "level": 8,
+        "bonus": 48,
+        "penalty": 16,
+        "ts": 1749350300.252016,
+        "duration": "4:45"
+    },
+    {
         "name": "poopsy",
         "score": 177,
         "size": 28,
@@ -97,16 +108,5 @@
         "penalty": 6,
         "ts": 1749141941.654736,
         "duration": "5:11"
-    },
-    {
-        "name": "UNDI",
-        "score": 176,
-        "size": 35,
-        "date": "06/07/25",
-        "level": 7,
-        "bonus": 48,
-        "penalty": 21,
-        "ts": 1749349758.333012,
-        "duration": "52:03"
     }
 ]
