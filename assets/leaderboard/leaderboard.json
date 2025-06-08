@@ -1,5 +1,16 @@
 [
     {
+        "name": "CORN!",
+        "score": 349,
+        "size": 41,
+        "date": "06/08/25",
+        "level": 10,
+        "bonus": 88,
+        "penalty": 10,
+        "ts": 1749392846.528625,
+        "duration": "5:34"
+    },
+    {
         "name": "Juali",
         "score": 339,
         "size": 46,
@@ -97,16 +108,5 @@
         "penalty": 16,
         "ts": 1749350300.252016,
         "duration": "4:45"
-    },
-    {
-        "name": "poopsy",
-        "score": 177,
-        "size": 28,
-        "date": "06/05/25",
-        "level": 7,
-        "bonus": 67,
-        "penalty": 6,
-        "ts": 1749141941.654736,
-        "duration": "5:11"
     }
 ]
