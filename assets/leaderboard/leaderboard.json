@@ -11,6 +11,17 @@
         "duration": "5:34"
     },
     {
+        "name": "poopsy",
+        "score": 340,
+        "size": 39,
+        "date": "06/22/25",
+        "level": 10,
+        "bonus": 131,
+        "penalty": 9,
+        "ts": 1750639088.814179,
+        "duration": "6:39"
+    },
+    {
         "name": "Juali",
         "score": 339,
         "size": 46,
@@ -97,16 +108,5 @@
         "penalty": 2,
         "ts": 1749345767.105318,
         "duration": "4:53"
-    },
-    {
-        "name": "888888",
-        "score": 221,
-        "size": 32,
-        "date": "06/22/25",
-        "level": 8,
-        "bonus": 95,
-        "penalty": 9,
-        "ts": 1750638464.071919,
-        "duration": "4:17"
     }
 ]
