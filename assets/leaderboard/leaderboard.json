@@ -1,5 +1,16 @@
 [
     {
+        "name": "CornH!",
+        "score": 412,
+        "size": 50,
+        "date": "11/26/25",
+        "level": 10,
+        "bonus": 125,
+        "penalty": 0,
+        "ts": 1764176236.003095,
+        "duration": "5:29"
+    },
+    {
         "name": "CORN!",
         "score": 349,
         "size": 41,
@@ -97,16 +108,5 @@
         "penalty": 11,
         "ts": 1748382863.675589,
         "duration": "3:53"
-    },
-    {
-        "name": "Elisa",
-        "score": 251,
-        "size": 40,
-        "date": "06/07/25",
-        "level": 9,
-        "bonus": 55,
-        "penalty": 2,
-        "ts": 1749345767.105318,
-        "duration": "4:53"
     }
 ]
