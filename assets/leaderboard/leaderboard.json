@@ -11,6 +11,17 @@
         "duration": "5:29"
     },
     {
+        "name": "JULIA",
+        "score": 401,
+        "size": 45,
+        "date": "11/27/25",
+        "level": 11,
+        "bonus": 156,
+        "penalty": 23,
+        "ts": 1764258628.603079,
+        "duration": "6:12"
+    },
+    {
         "name": "CORN!",
         "score": 349,
         "size": 41,
@@ -97,16 +108,5 @@
         "penalty": 268,
         "ts": 1748139673.038636,
         "duration": "5:53"
-    },
-    {
-        "name": "NYCRAT",
-        "score": 301,
-        "size": 42,
-        "date": "05/29/25",
-        "level": 10,
-        "bonus": 62,
-        "penalty": 24,
-        "ts": 1748524246.021926,
-        "duration": "3:24"
     }
 ]
